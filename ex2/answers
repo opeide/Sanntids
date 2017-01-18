@@ -1,6 +1,0 @@
-En atomic operation er en operasjon hvor en prosessor leser og skriver til en lokasjon i samme bussoperasjon. Gjør alt i én instruksjon.
-
-En semafor er en variabel som brukes for å kontrollere tilgangen til en delt ressurs.
-
-En mutex er et objekt som sørger for at flere kan dele en ressurs, bare ikke bruke den samtidig. Bare den som har låst mutex'en kan bruke variabelen. 
-
