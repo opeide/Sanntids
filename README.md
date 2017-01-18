@@ -1,2 +1,2 @@
 # Sanntids
-Heislab i sanntidssystemer
+Heislab i sanntidsprogrammering
