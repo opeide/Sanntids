@@ -1,17 +1,28 @@
-// gcc -std=gnu99 -Wall -g -o oppgave4_c oppgave4.c -lpthread
+// gcc -std=gnu99 -Wall -g -o C C.c -lpthread
 
 #include <pthread.h>
 #include <stdio.h>
 
 int i = 0;
+pthread_mutex_t i_mutex;
+
+
 
 void* thread1_func(){
-    for(int j = 0; j < 1000000; ++j) i++;
+    for(int j = 0; j < 100000; ++j){
+    	while( pthread_mutex_lock(&i_mutex) );
+    	i++;
+    	pthread_mutex_unlock(&i_mutex);
+    } 
     return NULL;
 }
 
 void* thread2_func(){
-    for(int j = 0; j < 1000000; ++j) i--;
+    for(int j = 0; j < 1000000; ++j){
+    	while( pthread_mutex_lock(&i_mutex) );
+    	i--;
+    	pthread_mutex_unlock(&i_mutex);
+    } 
     return NULL;
 }
 

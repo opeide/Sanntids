@@ -6,22 +6,25 @@ package main
 import (
 	"fmt"
 	"runtime"
+	"sync"
 	"time"
 )
 
-func thread1_func(ch chan int) {
+var i int = 0
+
+func thread1_func(mutex *sync.Mutex) {
 	for j := 0; j < 1000000; j++ {
-		i := <-ch
+		mutex.Lock()
 		i++
-		ch <- i
+		mutex.Unlock()
 	}
 }
 
-func thread2_func(ch chan int) {
+func thread2_func(mutex *sync.Mutex) {
 	for j := 0; j < 1000000; j++ {
-		i := <-ch
+		mutex.Lock()
 		i--
-		ch <- i
+		mutex.Unlock()
 	}
 }
 
@@ -30,14 +33,13 @@ func main() {
 
 	// Try doing the exercise both with and without it!
 
-	ch := make(chan int, 1)
-	ch <- 0
+	var mutex = &sync.Mutex{}
 
-	go thread1_func(ch)
-	go thread2_func(ch)
+	go thread1_func(mutex)
+	go thread2_func(mutex)
 
 	// We have no way to wait for the completion of a goroutine (without additional syncronization of some sort)
 	// We'll come back to using channels in Exercise 2. For now: Sleep.
 	time.Sleep(1000 * time.Millisecond)
-	fmt.Println("num: %v\n", <-ch)
+	fmt.Println("num: %v\n", i)
 }
