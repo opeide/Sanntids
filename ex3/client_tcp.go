@@ -7,9 +7,9 @@ import (
 
 const (
 	REMOTE_IP   = "129.241.187.43"
-	REMOTE_PORT = "34933"
+	REMOTE_PORT = "33546"
 	LOCAL_IP    = "129.241.187.159"
-	LOCAL_PORT  = "20011"
+	LOCAL_PORT  = "20111"
 	CONN_TYPE   = "tcp"
 )
 
@@ -26,23 +26,24 @@ func main() {
 	check_error(err)
 	conn, err := net.DialTCP(CONN_TYPE, localAddr, remoteAddr)
 	check_error(err)
-	defer conn.Close()
+	if err == nil {
+		defer conn.Close()
+	}
 
 	// Get welcome message
 	buf := make([]byte, 1024)
 	_, err = conn.Read(buf)
-	if err != nil {
-		fmt.Println("Error reading: ", err.Error())
-	}
+	check_error(err)
 	fmt.Println(string(buf[:]))
 
-	conn.Write([]byte("Echo this!"))
+	msg := "Echo this gruppe 11!\n"
+	conn.Write([]byte(msg))
 	buf = make([]byte, 1024)
 	_, err = conn.Read(buf)
 	check_error(err)
 	fmt.Println(string(buf[:]))
 
-	conn.Close()
+	//conn.Close()
 
 	/*_, err = conn.Write([]byte("Connect to: " + LOCAL_IP + ":" + LOCAL_PORT))
 	check_error(err)
