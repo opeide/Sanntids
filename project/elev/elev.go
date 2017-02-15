@@ -37,7 +37,7 @@ func Elev_set_floor_indicator(floor int) {
 }
 
 func Elev_set_door_open_lamp(value int) {
-	C.Elev_set_door_open_lamp(C.int(value))
+	C.elev_set_door_open_lamp(C.int(value))
 }
 
 func Elev_set_stop_lamp(value int) {
