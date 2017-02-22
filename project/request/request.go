@@ -1,4 +1,4 @@
-package global
+package request
 
 type Request struct {
 	Floor                          int

@@ -44,8 +44,8 @@ func Elev_set_stop_lamp(value int) {
 	C.elev_set_stop_lamp(C.int(value))
 }
 
-func Elev_get_button_signal(button_type int, floor int) {
-	C.elev_get_button_signal(C.elev_button_type_t(button_type), C.int(floor))
+func Elev_get_button_signal(button_type int, floor int) int {
+	return int(C.int(C.elev_get_button_signal(C.elev_button_type_t(button_type), C.int(floor))))
 }
 
 func Elev_get_floor_sensor_signal() int {
