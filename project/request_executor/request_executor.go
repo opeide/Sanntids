@@ -1,7 +1,7 @@
 package request_executor
 
 import (
-	"../elev"
+	"../hardware_interface/elev"
 	"../request"
 
 )
