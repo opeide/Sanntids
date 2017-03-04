@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-var last_non_stop_motor_direction int
+var last_non_stop_motor_direction int = 1
 var current_elevator_floor int //-1 if not at floor
 var last_visited_elevator_floor int
 
@@ -52,7 +52,7 @@ func Execute_requests(
 			elevator_complete_request_at_current_floor(set_motor_direction_chan, executed_requests_chan)
 			elevator_move_in_correct_direction(set_motor_direction_chan)
 
-		case current_elevator_floor := <-floor_changes_chan:
+		case current_elevator_floor = <-floor_changes_chan:
 			fmt.Println("executor got floor ", current_elevator_floor)
 			if current_elevator_floor == -1 {
 				break
@@ -72,8 +72,8 @@ func elevator_initialize_position(
 	fmt.Println("Initializing Executor...")
 
 	select {
-	case current_elevator_floor := <-floor_changes_chan:
-		fmt.Printlet_requen("New floor:")
+	case current_elevator_floor = <-floor_changes_chan:
+		fmt.Println("New floor:")
 		if current_elevator_floor == -1 {
 			fmt.Println("In shaft")
 			break
@@ -91,7 +91,7 @@ func elevator_initialize_position(
 	fmt.Println("Moving Down")
 	set_motor_direction_chan <- (hardware_interface.MOTOR_DIRECTION_DOWN)
 	select {
-	case current_elevator_floor := <-floor_changes_chan:
+	case current_elevator_floor = <-floor_changes_chan:
 		if current_elevator_floor == -1 {
 			set_motor_direction_chan <- (hardware_interface.MOTOR_DIRECTION_UP)
 			break
@@ -105,7 +105,7 @@ func elevator_initialize_position(
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_UP
 	}
 	select {
-	case current_elevator_floor := <-floor_changes_chan:
+	case current_elevator_floor = <-floor_changes_chan:
 		if current_elevator_floor == -1 {
 			break
 		}
@@ -172,6 +172,8 @@ func elevator_move_in_correct_direction(
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 	}
 
+	fmt.Println("current floor/dir", current_elevator_floor, last_non_stop_motor_direction)
+
 	if has_request_in_direction(current_elevator_floor, last_non_stop_motor_direction) {
 		set_motor_direction_chan <- last_non_stop_motor_direction
 		return
@@ -215,11 +217,13 @@ func has_request_in_direction(floor int, direction int) bool {
 		}
 
 		for floor_below := 0; floor_below < floor; floor_below++ {
+			fmt.Println("in loop floor below", floor_below)
 			if requests_downward[floor_below] != zero_request || requests_upward[floor_below] != zero_request {
 				fmt.Println("has request below floor", floor)
 				return true
 			}
 		}
+		fmt.Println("no requests below floor", floor)
 		return false
 	}
 
@@ -228,14 +232,16 @@ func has_request_in_direction(floor int, direction int) bool {
 			return false
 		}
 
-		for floor_above := floor + 1; floor_above < hardware_interface.N_FLOORS; floor++ {
+		for floor_above := floor + 1; floor_above < hardware_interface.N_FLOORS; floor_above++ {
+			fmt.Println("in loop floor above", floor_above)
 			if requests_downward[floor_above] != zero_request || requests_upward[floor_above] != zero_request {
 				fmt.Println("has request above floor", floor)
 				return true
 			}
 		}
+		fmt.Println("no requests above floor", floor)
 		return false
 	}
-
+	fmt.Println("no requests above or below floor/direction:", floor, direction)
 	return false
 }
