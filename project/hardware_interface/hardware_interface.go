@@ -2,6 +2,7 @@ package hardware_interface
 
 import (
 	"../message_structs"
+	//"fmt"
 )
 
 const (
@@ -19,10 +20,18 @@ func Read_and_write_to_hardware(button_request_chan chan<- message_structs.Reque
 	floor_changes_chan chan<- int,
 	set_motor_direction_chan <-chan int) {
 
-	elev_init(ET_Comedi)
+	elev_init()
+	floor_sensor_reading := elev_get_floor_sensor_signal()
+	floor_sensor_state = floor_sensor_reading
+	floor_changes_chan <- floor_sensor_reading
 
+	go button_request_acquirer(button_request_chan)
+	go floor_sensor(floor_changes_chan)
+	go motor_direction_setter(set_motor_direction_chan)
+}
+
+func button_request_acquirer(button_request_chan chan<- message_structs.Request) {
 	for {
-		// Read buttons
 		for floor := 0; floor < N_FLOORS; floor++ {
 			for button_type := 0; button_type < 3; button_type++ { // See elev.c for type definitions
 				button_is_pressed := elev_get_button_signal(button_type, floor)
@@ -37,14 +46,21 @@ func Read_and_write_to_hardware(button_request_chan chan<- message_structs.Reque
 				}
 			}
 		}
+	}
+}
 
-		// Read floor sensor
+func floor_sensor(floor_changes_chan chan<- int) {
+	for {
 		floor_sensor_reading := elev_get_floor_sensor_signal()
 		if floor_sensor_reading != floor_sensor_state {
 			floor_sensor_state = floor_sensor_reading
 			floor_changes_chan <- floor_sensor_state
 		}
+	}
+}
 
+func motor_direction_setter(set_motor_direction_chan <-chan int) {
+	for {
 		select {
 		case new_motor_direction := <-set_motor_direction_chan:
 			elev_set_motor_direction(new_motor_direction)

@@ -3,124 +3,239 @@ package request_executor
 import (
 	"../hardware_interface"
 	"../message_structs"
-	"time"
 	"fmt"
+	"time"
 )
 
-var last_motor_direction int
-var current_elevator_floor int
-var last_visited_floor int
+var last_non_stop_motor_direction int
+var current_elevator_floor int //-1 if not at floor
+var last_visited_elevator_floor int
 
-type elevator_state_t int
-var elevator_state elevator_state_t
-const (
-	starting_up elevator_state = iota
-	at_floor_idle
-	at_floor_doors_open
-	moving_down
-	moving_up
-)
+var requests_upward [hardware_interface.N_FLOORS]message_structs.Request
+var requests_downward [hardware_interface.N_FLOORS]message_structs.Request
 
-var requests_upward [hardware_interface.N_FLOORS] message_structs.Request
-var requests_downward [hardware_interface.N_FLOORS] message_structs.Request
+var zero_request message_structs.Request = message_structs.Request{} //dette ok?????????????????????????????????????????????????????????????????????????????????????????????
 
-func Execute_requests(	requests_to_execute_chan <-chan message_structs.Request, 
-						executed_requests_chan chan<- message_structs.Request, 
-						floor_changes_chan <-chan int,
-						set_motor_direction_chan chan<- int) {
-	
-	elevator_initialize_position()
-	
+func Execute_requests(
+	requests_to_execute_chan <-chan message_structs.Request,
+	executed_requests_chan chan<- message_structs.Request,
+	floor_changes_chan <-chan int,
+	set_motor_direction_chan chan<- int) {
+
+	elevator_initialize_position(set_motor_direction_chan, floor_changes_chan)
+	fmt.Println("Finished Initializing")
+
 	for {
 		select {
 		case request_to_execute := <-requests_to_execute_chan:
-			fmt.Println("executor got request.")
-			switch request_to_execute.Direction {
-				case hardware_interface.BUTTON_TYPE_CALL_DOWN:
-					if len(requests_downward[request_to_execute.Floor]) == 0{
-						requests_downward[request_to_execute.Floor] = request_to_execute
-					}
-				case hardware_interface.BUTTON_TYPE_CALL_UP:
-					if len(requests_upward[request_to_execute.Floor]) == 0{
-						requests_downward[request_to_execute.Floor] = request_to_execute
-					}	
-				case hardware_interface.BUTTON_TYPE_COMMAND:
-					if len(requests_downward[request_to_execute.Floor]) == 0{
-						requests_downward[request_to_execute.Floor] = request_to_execute
-					}
-					if len(requests_upward[request_to_execute.Floor]) == 0{
-						requests_upward[request_to_execute.Floor] = request_to_execute
-					}	
+			switch request_to_execute.Request_type {
+			case hardware_interface.BUTTON_TYPE_CALL_DOWN:
+				if requests_downward[request_to_execute.Floor] == zero_request {
+					requests_downward[request_to_execute.Floor] = request_to_execute
+				}
+			case hardware_interface.BUTTON_TYPE_CALL_UP:
+				if requests_upward[request_to_execute.Floor] == zero_request {
+					requests_upward[request_to_execute.Floor] = request_to_execute
+				}
+			case hardware_interface.BUTTON_TYPE_COMMAND:
+				if requests_downward[request_to_execute.Floor] == zero_request {
+					requests_downward[request_to_execute.Floor] = request_to_execute
+				}
+				if requests_upward[request_to_execute.Floor] == zero_request {
+					requests_upward[request_to_execute.Floor] = request_to_execute
+				}
+			default:
+				fmt.Println("executor error: request type")
+			}
+			fmt.Println("executor added request", requests_downward, requests_upward)
+
+			elevator_complete_request_at_current_floor(set_motor_direction_chan, executed_requests_chan)
+			elevator_move_in_correct_direction(set_motor_direction_chan)
+
+		case current_elevator_floor := <-floor_changes_chan:
+			fmt.Println("executor got floor ", current_elevator_floor)
+			if current_elevator_floor == -1 {
+				break
 			}
 
-			elevator_complete_request_at_current_floor()
-
-			elevator_move_in_correct_direction()
+			last_visited_elevator_floor = current_elevator_floor
+			elevator_complete_request_at_current_floor(set_motor_direction_chan, executed_requests_chan)
+			elevator_move_in_correct_direction(set_motor_direction_chan)
 		}
-
-		case current_elevator_floor := <-floor_changes_chan:
-			fmt.Println("executor got floor ", current_elevator_floor)	
-			if current_elevator_floor == -1 {break}
-
-			last_elevator_floor = current_elevator_floor
-			elevator_complete_request_at_current_floor()
-			elevator_move_in_correct_direction()						
 	}
 }
-	
-func elevator_initialize_position(){
+
+func elevator_initialize_position(
+	set_motor_direction_chan chan<- int,
+	floor_changes_chan <-chan int) {
+
+	fmt.Println("Initializing Executor...")
+
+	select {
+	case current_elevator_floor := <-floor_changes_chan:
+		fmt.Printlet_requen("New floor:")
+		if current_elevator_floor == -1 {
+			fmt.Println("In shaft")
+			break
+		}
+		fmt.Println("Already at floor")
+		last_visited_elevator_floor = current_elevator_floor
+		fmt.Println("INTERMISSION")
+		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP //precautionary measure, do not trust low level init files
+		fmt.Println("exiting init")
+		return
+	case <-time.After(time.Second * 1):
+		break
+	}
+
+	fmt.Println("Moving Down")
 	set_motor_direction_chan <- (hardware_interface.MOTOR_DIRECTION_DOWN)
-	select{
-		case current_elevator_floor := <-floor_changes_chan:
-			if current_elevator_floor == -1 {break}
-			last_visited_floor = current_elevator_floor
-			return
-		case <-time.After(time.Second * 5):
+	select {
+	case current_elevator_floor := <-floor_changes_chan:
+		if current_elevator_floor == -1 {
 			set_motor_direction_chan <- (hardware_interface.MOTOR_DIRECTION_UP)
+			break
+		}
+		fmt.Println("Arrived at Floor")
+		last_visited_elevator_floor = current_elevator_floor
+		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+		return
+	case <-time.After(time.Second * 5): // Dårlig ide??????????????????????????????????????
+		fmt.Println("Moving Up")
+		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_UP
 	}
-	select{
-		case current_elevator_floor := <-floor_changes_chan:
-			if current_elevator_floor == -1 {break}
-			last_visited_floor = current_elevator_floor
-			return
-		case <-time.After(time.Second * 5):
-			fmt.Println("ELEVATOR DID NOT FIND ANY FLOORS DURING INIT.")
+	select {
+	case current_elevator_floor := <-floor_changes_chan:
+		if current_elevator_floor == -1 {
+			break
+		}
+		fmt.Println("Arrived at Floor")
+		last_visited_elevator_floor = current_elevator_floor
+		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+		return
+	case <-time.After(time.Second * 5):
+		break
 	}
-
+	fmt.Println("ELEVATOR DID NOT FIND ANY FLOORS DURING INIT. SHOULD RESTART.")
+	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 }
-func elevator_complete_request_at_current_floor(){
-	if current_elevator_floor == -1 {break}
-	if len(requests_downward[elevator_floor]) != 0{
-		set_motor_direction_chan <- (hardware_interface.MOTOR_DIRECTION_STOP)	//TODO: Turn off lights and open doors
-		executed_requests_chan <- requests_downward[elevator_floor]
-		requests_downward[elevator_floor] = nil 
+
+func elevator_complete_request_at_current_floor(
+	set_motor_direction_chan chan<- int,
+	executed_requests_chan chan<- message_structs.Request) {
+
+	if current_elevator_floor == -1 {
+		return
 	}
 
-	if len(requests_upward[elevator_floor]) != 0{
-		set_motor_direction_chan <- (hardware_interface.MOTOR_DIRECTION_STOP)	//TODO: Turn off lights and open doors
-		executed_requests_chan <- requests_upward[elevator_floor]
-		requests_upward[elevator_floor] = nil
+	request_here := get_request_at(current_elevator_floor, last_non_stop_motor_direction)
+	if request_here != zero_request {
+		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP //TODO: Turn off lights and open doors
+		request_here.Is_completed = true
+		executed_requests_chan <- request_here
+		set_request_at(current_elevator_floor, last_non_stop_motor_direction, zero_request)
+		set_request_at(current_elevator_floor, -last_non_stop_motor_direction, zero_request) // See elev.c: -1*dir is opposite dir
+		return
 	}
-}	
 
-func elevator_move_in_correct_direction(){
-	if elevator_floor == -1 {break}
+	if has_request_in_direction(current_elevator_floor, last_non_stop_motor_direction) {
+		return
+	}
 
-	if last_motor_direction == hardware_interface.MOTOR_DIRECTION_DOWN{
-		has_requests_below := 0
-		for (i = 0; i < last_elevator_floor; i++){
-			has_requests_below += len(requests_downward[i])
+	request_here = get_request_at(current_elevator_floor, -last_non_stop_motor_direction)
+	if request_here != zero_request {
+		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP //TODO: Turn off lights and open doors
+		last_non_stop_motor_direction = -last_non_stop_motor_direction
+		request_here.Is_completed = true
+		executed_requests_chan <- request_here
+		set_request_at(current_elevator_floor, last_non_stop_motor_direction, zero_request)
+		return
+	}
+
+	if has_request_in_direction(current_elevator_floor, -last_non_stop_motor_direction) {
+		set_motor_direction_chan <- -last_non_stop_motor_direction
+		last_non_stop_motor_direction = -last_non_stop_motor_direction
+		return
+	}
+
+	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+}
+
+func elevator_move_in_correct_direction(
+	set_motor_direction_chan chan<- int) {
+
+	switch current_elevator_floor {
+	case -1:
+		set_motor_direction_chan <- last_non_stop_motor_direction
+		return
+	case 0, hardware_interface.N_FLOORS - 1:
+		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+	}
+
+	if has_request_in_direction(current_elevator_floor, last_non_stop_motor_direction) {
+		set_motor_direction_chan <- last_non_stop_motor_direction
+		return
+	}
+
+	if has_request_in_direction(current_elevator_floor, -last_non_stop_motor_direction) {
+		set_motor_direction_chan <- -last_non_stop_motor_direction
+		last_non_stop_motor_direction = -last_non_stop_motor_direction
+		return
+	}
+
+	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+}
+
+func get_request_at(floor int, direction int) message_structs.Request {
+	if direction == hardware_interface.MOTOR_DIRECTION_DOWN {
+		return requests_downward[floor]
+	}
+
+	if direction == hardware_interface.MOTOR_DIRECTION_UP {
+		return requests_upward[floor]
+	}
+
+	return zero_request
+}
+
+func set_request_at(floor int, direction int, request message_structs.Request) {
+	if direction == hardware_interface.MOTOR_DIRECTION_DOWN {
+		requests_downward[floor] = request
+	}
+
+	if direction == hardware_interface.MOTOR_DIRECTION_UP {
+		requests_upward[floor] = request
+	}
+}
+
+func has_request_in_direction(floor int, direction int) bool {
+	if direction == hardware_interface.MOTOR_DIRECTION_DOWN {
+		if floor == 0 {
+			return false
 		}
-		if has_requests_below{
-			set_motor_direction_chan <- (hardware_interface.MOTOR_DIRECTION_DOWN)
+
+		for floor_below := 0; floor_below < floor; floor_below++ {
+			if requests_downward[floor_below] != zero_request || requests_upward[floor_below] != zero_request {
+				fmt.Println("has request below floor", floor)
+				return true
+			}
 		}
+		return false
 	}
-	
-	has_requests_above := 0
-	for (i = last_elevator_floor+1; i < hardware_interface.N_FLOORS; i++){
-		has_requests_above, += len(requests_downward[i])
+
+	if direction == hardware_interface.MOTOR_DIRECTION_UP {
+		if floor == hardware_interface.N_FLOORS-1 {
+			return false
+		}
+
+		for floor_above := floor + 1; floor_above < hardware_interface.N_FLOORS; floor++ {
+			if requests_downward[floor_above] != zero_request || requests_upward[floor_above] != zero_request {
+				fmt.Println("has request above floor", floor)
+				return true
+			}
+		}
+		return false
 	}
-	if has_requests_above{
-		set_motor_direction_chan <- (hardware_interface.MOTOR_DIRECTION_UP)
-	}
+
+	return false
 }

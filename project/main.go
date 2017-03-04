@@ -18,17 +18,17 @@ const (
 )
 
 func main() {
-	button_request_chan := make(chan message_structs.Request)
-	floor_changes_chan := make(chan int)
-	set_motor_direction_chan := make(chan int)
+	button_request_chan := make(chan message_structs.Request, 1) // 50 because ???????????????????????????
+	floor_changes_chan := make(chan int, 1)
+	set_motor_direction_chan := make(chan int, 1)
 
 	go hardware_interface.Read_and_write_to_hardware(
 		button_request_chan,
 		floor_changes_chan,
 		set_motor_direction_chan)
 
-	requests_to_execute_chan := make(chan message_structs.Request)
-	executed_requests_chan := make(chan message_structs.Request)
+	requests_to_execute_chan := make(chan message_structs.Request, 1)
+	executed_requests_chan := make(chan message_structs.Request, 1)
 
 	go request_executor.Execute_requests(
 		requests_to_execute_chan,
@@ -43,12 +43,15 @@ func main() {
 	}
 	id := fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 
-	peer_update_chan := make(chan peers.PeerUpdate)
-	peer_tx_enable_chan := make(chan bool) // Currently not in use, but needed to run the peers.Receiver
+	peer_update_chan := make(chan peers.PeerUpdate, 1)
+	peer_tx_enable_chan := make(chan bool, 1) // Currently not in use, but needed to run the peers.Receiver
+
 	go peers.Transmitter(peer_update_port, id, peer_tx_enable_chan)
 	go peers.Receiver(peer_update_port, peer_update_chan)
-	network_request_rx_chan := make(chan message_structs.Request)
-	network_request_tx_chan := make(chan message_structs.Request)
+
+	network_request_rx_chan := make(chan message_structs.Request, 1)
+	network_request_tx_chan := make(chan message_structs.Request, 1)
+
 	go bcast.Transmitter(network_request_port, network_request_tx_chan)
 	go bcast.Receiver(network_request_port, network_request_rx_chan)
 

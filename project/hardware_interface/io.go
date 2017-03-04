@@ -21,7 +21,7 @@ func io_clear_bit(channel int) {
 }
 
 func io_read_bit(channel int) int {
-	return int(C.int(io_read_bit(C.int(channel))))
+	return int(C.int(C.io_read_bit(C.int(channel))))
 }
 
 func io_read_analog(channel int) int {
