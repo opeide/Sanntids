@@ -4,7 +4,7 @@ import (
 	"../hardware_interface"
 	"../request"
 	"time"
-
+	"fmt"
 )
 
 var last_motor_direction int
@@ -63,11 +63,27 @@ func Execute_requests(requests_to_execute_chan <-chan request.Request, executed_
 						
 	}
 }
-
+	
 func elevator_initialize_position(){
+	elev.Elev_set_motor_direction(elev.MOTOR_DIRECTION_DOWN)
+	select{
+		case current_elevator_floor := <-floor_changes_chan:
+			if current_elevator_floor == -1 {break}
+			last_visited_floor = current_elevator_floor
+			return
+		case <-time.After(time.Second * 5):
+			elev.Elev_set_motor_direction(elev.MOTOR_DIRECTION_UP)
+	}
+	select{
+		case current_elevator_floor := <-floor_changes_chan:
+			if current_elevator_floor == -1 {break}
+			last_visited_floor = current_elevator_floor
+			return
+		case <-time.After(time.Second * 5):
+			fmt.Println("ELEVATOR DID NOT FIND ANY FLOORS DURING INIT.")
+	}
 
 }
-
 func elevator_complete_request_at_current_floor(){
 	if current_elevator_floor == -1 {break}
 	if len(requests_downward[elevator_floor]) != 0{
@@ -80,7 +96,7 @@ func elevator_complete_request_at_current_floor(){
 		elev.Elev_set_motor_direction(elev.MOTOR_DIRECTION_STOP)	//TODO: Turn off lights and open doors
 		executed_requests_chan <- requests_upward[elevator_floor]
 		requests_upward[elevator_floor] = nil
-
+	}
 }	
 
 func elevator_move_in_correct_direction(){
@@ -103,6 +119,4 @@ func elevator_move_in_correct_direction(){
 	if has_requests_above{
 		elev.Elev_set_motor_direction(elev.MOTOR_DIRECTION_UP)
 	}
-
-	
 }
