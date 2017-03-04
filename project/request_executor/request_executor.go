@@ -1,7 +1,7 @@
 package request_executor
 
 import (
-	"../hardware_interface/elev"
+	"../hardware_interface"
 	"../request"
 	"time"
 

@@ -5,6 +5,19 @@ import(
 	"../request"
 )
 
+const (
+	N_FLOORS  = elev.N_FLOORS
+	N_BUTTONS = elev.N_BUTTONS
+
+	MOTOR_DIRECTION_DOWN = elev.MOTOR_DIRECTION_DOWN
+	MOTOR_DIRECTION_STOP = elev.MOTOR_DIRECTION_STOP
+	MOTOR_DIRECTION_UP   = elev.MOTOR_DIRECTION_UP
+
+	BUTTON_TYPE_CALL_UP   = elev.BUTTON_TYPE_CALL_UP
+	BUTTON_TYPE_CALL_DOWN = elev.BUTTON_TYPE_CALL_DOWN
+	BUTTON_TYPE_COMMAND   = elev.BUTTON_TYPE_COMMAND
+)
+
 var button_states [elev.N_FLOORS][3]int // 3 is the number of button types: UP, DOWN and COMMAND
 var floor_sensor_state int = -1
 
