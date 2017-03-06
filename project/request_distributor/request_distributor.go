@@ -41,19 +41,13 @@ func Distribute_requests(id string,
 			fmt.Println("Distributor: Executor completed request: ", executed_request)
 			
 			set_lamp_message := message_structs.Set_lamp_message{}
-			switch(executed_request.Request_type){
-			case hardware_interface.BUTTON_TYPE_CALL_UP:
-				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
-				break
-			case hardware_interface.BUTTON_TYPE_CALL_DOWN:
-				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
-				break
-			case hardware_interface.BUTTON_TYPE_COMMAND:
-				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
-				break
-			}
+			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
 			set_lamp_message.Floor = executed_request.Floor
 			set_lamp_message.Value = 0
+			set_lamp_chan <- set_lamp_message
+			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
+			set_lamp_chan <- set_lamp_message
+			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
 			set_lamp_chan <- set_lamp_message
 		}
 	}
