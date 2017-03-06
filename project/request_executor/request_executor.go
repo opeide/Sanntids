@@ -20,7 +20,8 @@ func Execute_requests(
 	requests_to_execute_chan <-chan message_structs.Request,
 	executed_requests_chan chan<- message_structs.Request,
 	floor_changes_chan <-chan int,
-	set_motor_direction_chan chan<- int) {
+	set_motor_direction_chan chan<- int, 
+	set_lamp_chan chan<- message_structs.Set_lamp_message) {
 
 	elevator_initialize_position(set_motor_direction_chan, floor_changes_chan)
 	fmt.Println("Finished Initializing Executor")
