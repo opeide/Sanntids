@@ -16,9 +16,11 @@ const (
 var button_states [N_FLOORS][3]int // 3 is the number of button types: UP, DOWN and COMMAND
 var floor_sensor_state int = -1
 
-func Read_and_write_to_hardware(button_request_chan chan<- message_structs.Request,
+func Read_and_write_to_hardware(
+	button_request_chan chan<- message_structs.Request,
 	floor_changes_chan chan<- int,
-	set_motor_direction_chan <-chan int) {
+	set_motor_direction_chan <-chan int, 
+	set_lamp_chan <- chan message_structs.Set_lamp_message) {
 
 	elev_init()
 	floor_sensor_reading := elev_get_floor_sensor_signal()
@@ -28,6 +30,7 @@ func Read_and_write_to_hardware(button_request_chan chan<- message_structs.Reque
 	go button_request_acquirer(button_request_chan)
 	go floor_sensor(floor_changes_chan)
 	go motor_direction_setter(set_motor_direction_chan)
+	go lamp_setter(set_lamp_chan)
 }
 
 func button_request_acquirer(button_request_chan chan<- message_structs.Request) {
@@ -64,6 +67,31 @@ func motor_direction_setter(set_motor_direction_chan <-chan int) {
 		select {
 		case new_motor_direction := <-set_motor_direction_chan:
 			elev_set_motor_direction(new_motor_direction)
+		}
+	}
+}
+
+func lamp_setter(set_lamp_chan <-chan message_structs.Set_lamp_message){
+	for{
+		select{
+		case set_lamp_message := <- set_lamp_chan:
+			switch(set_lamp_message.Lamp_type){
+			case LAMP_TYPE_UP:
+				elev_set_button_lamp(BUTTON_TYPE_CALL_UP, set_lamp_message.Floor, set_lamp_message.Value)
+				break
+			case LAMP_TYPE_DOWN:
+				elev_set_button_lamp(BUTTON_TYPE_CALL_DOWN, set_lamp_message.Floor, set_lamp_message.Value)
+				break
+			case LAMP_TYPE_COMMAND:
+				elev_set_button_lamp(BUTTON_TYPE_COMMAND, set_lamp_message.Floor, set_lamp_message.Value)
+				break
+			case LAMP_TYPE_FLOOR_INDICATOR:
+				elev_set_floor_indicator(set_lamp_message.Floor)
+				break
+			case LAMP_TYPE_DOOR_OPEN:
+				elev_set_door_open_lamp(set_lamp_message.Value)
+				break
+			}
 		}
 	}
 }

@@ -21,11 +21,13 @@ func main() {
 	button_request_chan := make(chan message_structs.Request, 1) // 50 because ???????????????????????????
 	floor_changes_chan := make(chan int, 1)
 	set_motor_direction_chan := make(chan int, 1)
+	set_lamp_chan := make(chan message_structs.Set_lamp_message, 1)
 
 	go hardware_interface.Read_and_write_to_hardware(
 		button_request_chan,
 		floor_changes_chan,
-		set_motor_direction_chan)
+		set_motor_direction_chan,
+		set_lamp_chan)
 
 	requests_to_execute_chan := make(chan message_structs.Request, 1)
 	executed_requests_chan := make(chan message_structs.Request, 1)
@@ -63,7 +65,8 @@ func main() {
 		network_request_tx_chan,
 		button_request_chan,
 		requests_to_execute_chan,
-		executed_requests_chan)
+		executed_requests_chan, 
+		set_lamp_chan)
 
 	select {}
 }

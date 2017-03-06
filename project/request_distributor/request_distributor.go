@@ -12,7 +12,8 @@ func Distribute_requests(id string,
 	network_request_tx_chan chan<- message_structs.Request,
 	button_request_chan <-chan message_structs.Request,
 	requests_to_execute_chan chan<- message_structs.Request,
-	executed_requests_chan <-chan message_structs.Request) {
+	executed_requests_chan <-chan message_structs.Request, 
+	set_lamp_chan chan<- message_structs.Set_lamp_message) {
 
 	for {
 		select {

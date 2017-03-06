@@ -9,7 +9,7 @@ type Request struct {
 }
 
 type Set_lamp_message struct {
-	Lamp_type int
+	Lamp_type int // See hardware_interface for values
 	Floor     int
 	Value     int
 }
