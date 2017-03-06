@@ -36,7 +36,8 @@ func main() {
 		requests_to_execute_chan,
 		executed_requests_chan,
 		floor_changes_chan,
-		set_motor_direction_chan)
+		set_motor_direction_chan, 
+		set_lamp_chan)
 
 	localIP, err := localip.LocalIP()
 	if err != nil {
