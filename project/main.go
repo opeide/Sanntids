@@ -42,6 +42,7 @@ func main() {
 		localIP = "DISCONNECTED"
 	}
 	id := fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
+	fmt.Println("MY ID: ",id)
 
 	peer_update_chan := make(chan peers.PeerUpdate, 1)
 	peer_tx_enable_chan := make(chan bool, 1) // Currently not in use, but needed to run the peers.Receiver
@@ -56,6 +57,7 @@ func main() {
 	go bcast.Receiver(network_request_port, network_request_rx_chan)
 
 	go request_distributor.Distribute_requests(
+		id,
 		peer_update_chan,
 		network_request_rx_chan,
 		network_request_tx_chan,
