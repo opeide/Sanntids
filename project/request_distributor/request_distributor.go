@@ -3,6 +3,7 @@ package request_distributor
 import (
 	"../message_structs"
 	"../network/peers"
+	"../hardware_interface"
 	"fmt"
 )
 
@@ -21,15 +22,15 @@ func Distribute_requests(id string,
 			button_request.Primary_responsible_elevator = id
 			requests_to_execute_chan <- button_request
 			
-			set_lamp_message = message_structs.Set_lamp_message{}
+			set_lamp_message := message_structs.Set_lamp_message{}
 			switch(button_request.Request_type){
-			case BUTTON_TYPE_CALL_UP:
+			case hardware_interface.BUTTON_TYPE_CALL_UP:
 				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
 				break
-			case BUTTON_TYPE_CALL_DOWN:
+			case hardware_interface.BUTTON_TYPE_CALL_DOWN:
 				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
 				break
-			case BUTTON_TYPE_COMMAND:
+			case hardware_interface.BUTTON_TYPE_COMMAND:
 				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
 				break
 			}
@@ -39,19 +40,19 @@ func Distribute_requests(id string,
 		case executed_request := <-executed_requests_chan:
 			fmt.Println("Distributor: Executor completed request: ", executed_request)
 			
-			set_lamp_message = message_structs.Set_lamp_message{}
-			switch(button_request.Request_type){
-			case BUTTON_TYPE_CALL_UP:
+			set_lamp_message := message_structs.Set_lamp_message{}
+			switch(executed_request.Request_type){
+			case hardware_interface.BUTTON_TYPE_CALL_UP:
 				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
 				break
-			case BUTTON_TYPE_CALL_DOWN:
+			case hardware_interface.BUTTON_TYPE_CALL_DOWN:
 				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
 				break
-			case BUTTON_TYPE_COMMAND:
+			case hardware_interface.BUTTON_TYPE_COMMAND:
 				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
 				break
 			}
-			set_lamp_message.Floor = button_request.Floor
+			set_lamp_message.Floor = executed_request.Floor
 			set_lamp_message.Value = 0
 			set_lamp_chan <- set_lamp_message
 		}
