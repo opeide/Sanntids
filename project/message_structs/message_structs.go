@@ -13,3 +13,10 @@ type Set_lamp_message struct {
 	Floor     int
 	Value     int
 }
+
+type Elevator_state struct{
+	Current_floor int // -1 if not in floor
+	Last_visited_floor int
+	Door_is_open bool
+	Last_non_stop_motor_direction int // See hardware_interface for motor directions
+}
