@@ -45,7 +45,8 @@ func main() {
 	localIP, err := localip.LocalIP()
 	if err != nil {
 		fmt.Println(err)
-		localIP = "DISCONNECTED"
+		fmt.Println("DISCONNECTED FROM NETWORK AT STARTUP. EXITING")
+		return
 	}
 	id := fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 	fmt.Println("MY ID: ",id)

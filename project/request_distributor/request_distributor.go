@@ -29,8 +29,12 @@ func Distribute_requests(
 	for {
 		select {
 		case button_request := <-button_request_chan:
-			button_request.Primary_responsible_elevator = local_id
-			requests_to_execute_chan <- button_request
+			button_request.Primary_responsible_elevator = decide_primary_responsible_elevator(local_id)
+			if button_request.Primary_responsible_elevator == local_id{
+				requests_to_execute_chan <- button_request			
+			}
+			button_request.Message_origin_id = local_id
+			network_request_tx_chan <- button_request
 			
 			set_lamp_message := message_structs.Set_lamp_message{}
 			switch(button_request.Request_type){
@@ -72,8 +76,14 @@ func Distribute_requests(
 				fmt.Println("Distributor: Received non-local completed request: ", non_local_request)
 			}else{
 				fmt.Println("Distributor: Received non-local non-completed request: ", non_local_request)
+				if non_local_request.Primary_responsible_elevator == local_id{
+					fmt.Println("Distributor: Executor should do non-local request")
+					non_local_request.Message_origin_id = local_id
+					network_request_tx_chan <- non_local_request
+				}else{
+					fmt.Println("Distributor: Executor should *not* do non-local request")
+				}
 			}
-
 
 		case local_elevator_state := <-local_elevator_state_changes_chan:
 			fmt.Println("Distributor: New local elevator state: ", local_elevator_state)
@@ -106,4 +116,9 @@ func Distribute_requests(
 			}
 		}
 	}
+}
+
+
+func decide_primary_responsible_elevator(local_id string) string{
+	return local_id
 }
