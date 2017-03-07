@@ -8,8 +8,8 @@ import (
 )
 
 var last_non_stop_motor_direction int = hardware_interface.MOTOR_DIRECTION_UP
-var current_elevator_floor int //-1 if not at floor
-var last_visited_elevator_floor int
+var current_floor int //-1 if not at floor
+var last_visited_floor int
 var door_is_open bool = false
 
 var door_just_closed_chan chan int = make(chan int, 1)
@@ -23,11 +23,11 @@ func Execute_requests(
 	executed_requests_chan chan<- message_structs.Request,
 	floor_changes_chan <-chan int,
 	set_motor_direction_chan chan<- int, 
-	set_lamp_chan chan<- message_structs.Set_lamp_message) {
+	set_lamp_chan chan<- message_structs.Set_lamp_message, 
+	elevator_state_changes_chan chan<- message_structs.Elevator_state) {
 
 	elevator_initialize_position(set_motor_direction_chan, floor_changes_chan)
-	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_elevator_floor}
-	fmt.Println("Finished Initializing Executor")
+	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}
 
 	for {
 		select {
@@ -53,15 +53,19 @@ func Execute_requests(
 			elevator_attempt_complete_request_at_current_floor(set_motor_direction_chan, set_lamp_chan, executed_requests_chan)
 			elevator_move_in_correct_direction(set_motor_direction_chan)
 
-		case current_elevator_floor = <-floor_changes_chan:
-			if current_elevator_floor == -1 {
+		case current_floor = <-floor_changes_chan:
+			if current_floor == -1 {
 				break
 			}
 
-			set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_elevator_floor}			
-			last_visited_elevator_floor = current_elevator_floor	
+			set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}			
+			last_visited_floor = current_floor	
 			elevator_attempt_complete_request_at_current_floor(set_motor_direction_chan, set_lamp_chan, executed_requests_chan)
 			elevator_move_in_correct_direction(set_motor_direction_chan)
+
+			elevator_state_changes_chan <- message_structs.Elevator_state{ 
+				Last_visited_floor: last_visited_floor,
+				Last_non_stop_motor_direction: last_non_stop_motor_direction}
 
 		case <-door_just_closed_chan:
 			door_is_open = false
@@ -76,9 +80,9 @@ func elevator_initialize_position(
 	floor_changes_chan <-chan int) {
 
 	select {
-	case current_elevator_floor = <-floor_changes_chan:
-		if current_elevator_floor != -1 {
-			last_visited_elevator_floor = current_elevator_floor
+	case current_floor = <-floor_changes_chan:
+		if current_floor != -1 {
+			last_visited_floor = current_floor
 			set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP //precautionary measure, do not trust low level init files
 			return
 		}
@@ -86,16 +90,16 @@ func elevator_initialize_position(
 
 	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_DOWN
 	select {
-	case current_elevator_floor = <-floor_changes_chan:
-		last_visited_elevator_floor = current_elevator_floor
+	case current_floor = <-floor_changes_chan:
+		last_visited_floor = current_floor
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 		return
 	case <-time.After(time.Second * 5):
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_UP
 	}
 	select {
-	case current_elevator_floor = <-floor_changes_chan:
-		last_visited_elevator_floor = current_elevator_floor
+	case current_floor = <-floor_changes_chan:
+		last_visited_floor = current_floor
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 		return
 	case <-time.After(time.Second * 5):
@@ -110,27 +114,27 @@ func elevator_attempt_complete_request_at_current_floor(
 	set_lamp_chan chan<- message_structs.Set_lamp_message,
 	executed_requests_chan chan<- message_structs.Request) {
 
-	if current_elevator_floor == -1 || door_is_open{
+	if current_floor == -1 || door_is_open{
 		return
 	}
 
-	request_here := get_request_at(current_elevator_floor, last_non_stop_motor_direction)
+	request_here := get_request_at(current_floor, last_non_stop_motor_direction)
 	if request_here != zero_request {
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP //TODO: Turn off lights and open doors
 		door_is_open = true
 		go open_doors_and_close_after_time(set_lamp_chan)
 		request_here.Is_completed = true
 		executed_requests_chan <- request_here
-		set_request_at(current_elevator_floor, last_non_stop_motor_direction, zero_request)
-		set_request_at(current_elevator_floor, -last_non_stop_motor_direction, zero_request) // See elev.c: -1*dir is opposite dir
+		set_request_at(current_floor, last_non_stop_motor_direction, zero_request)
+		set_request_at(current_floor, -last_non_stop_motor_direction, zero_request) // See elev.c: -1*dir is opposite dir
 		return
 	}
 
-	if has_request_in_direction(current_elevator_floor, last_non_stop_motor_direction) {
+	if has_request_in_direction(current_floor, last_non_stop_motor_direction) {
 		return
 	}
 
-	request_here = get_request_at(current_elevator_floor, -last_non_stop_motor_direction)
+	request_here = get_request_at(current_floor, -last_non_stop_motor_direction)
 	if request_here != zero_request {
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP //TODO: Turn off lights and open doors
 		last_non_stop_motor_direction = -last_non_stop_motor_direction
@@ -138,11 +142,11 @@ func elevator_attempt_complete_request_at_current_floor(
 		go open_doors_and_close_after_time(set_lamp_chan)
 		request_here.Is_completed = true
 		executed_requests_chan <- request_here
-		set_request_at(current_elevator_floor, last_non_stop_motor_direction, zero_request)
+		set_request_at(current_floor, last_non_stop_motor_direction, zero_request)
 		return
 	}
 
-	if has_request_in_direction(current_elevator_floor, -last_non_stop_motor_direction) {
+	if has_request_in_direction(current_floor, -last_non_stop_motor_direction) {
 		set_motor_direction_chan <- -last_non_stop_motor_direction
 		last_non_stop_motor_direction = -last_non_stop_motor_direction
 		return
@@ -160,7 +164,7 @@ func elevator_move_in_correct_direction(
 		return
 	}
 
-	switch current_elevator_floor {
+	switch current_floor {
 	case -1:
 		set_motor_direction_chan <- last_non_stop_motor_direction
 		return
@@ -168,12 +172,12 @@ func elevator_move_in_correct_direction(
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 	}
 
-	if has_request_in_direction(current_elevator_floor, last_non_stop_motor_direction) {
+	if has_request_in_direction(current_floor, last_non_stop_motor_direction) {
 		set_motor_direction_chan <- last_non_stop_motor_direction
 		return
 	}
 
-	if has_request_in_direction(current_elevator_floor, -last_non_stop_motor_direction) {
+	if has_request_in_direction(current_floor, -last_non_stop_motor_direction) {
 		set_motor_direction_chan <- -last_non_stop_motor_direction
 		last_non_stop_motor_direction = -last_non_stop_motor_direction
 		return
@@ -184,13 +188,11 @@ func elevator_move_in_correct_direction(
 
 
 func open_doors_and_close_after_time(set_lamp_chan chan<- message_structs.Set_lamp_message){
-	fmt.Println("opening doors")
-	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_DOOR_OPEN, Floor: current_elevator_floor, Value: 1}
+	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_DOOR_OPEN, Floor: current_floor, Value: 1}
 	select{
 	case  <-time.After(time.Second * 3):
-		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_DOOR_OPEN, Floor: current_elevator_floor, Value: 0}
+		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_DOOR_OPEN, Floor: current_floor, Value: 0}
 		door_just_closed_chan <- 1
-		fmt.Println("closing doors") 
 	}
 }
 

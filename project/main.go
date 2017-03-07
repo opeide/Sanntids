@@ -31,13 +31,15 @@ func main() {
 
 	requests_to_execute_chan := make(chan message_structs.Request, 1)
 	executed_requests_chan := make(chan message_structs.Request, 1)
+	elevator_state_changes_chan := make(chan message_structs.Elevator_state, 1) // Burde være 3 eller noe slikt? Ettersom det kommer 3 på rad av og til. 
 
 	go request_executor.Execute_requests(
 		requests_to_execute_chan,
 		executed_requests_chan,
 		floor_changes_chan,
 		set_motor_direction_chan, 
-		set_lamp_chan)
+		set_lamp_chan, 
+		elevator_state_changes_chan)
 
 	localIP, err := localip.LocalIP()
 	if err != nil {
@@ -67,7 +69,8 @@ func main() {
 		button_request_chan,
 		requests_to_execute_chan,
 		executed_requests_chan, 
-		set_lamp_chan)
+		set_lamp_chan, 
+		elevator_state_changes_chan)
 
 	select {}
 }

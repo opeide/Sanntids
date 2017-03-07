@@ -14,7 +14,8 @@ func Distribute_requests(id string,
 	button_request_chan <-chan message_structs.Request,
 	requests_to_execute_chan chan<- message_structs.Request,
 	executed_requests_chan <-chan message_structs.Request, 
-	set_lamp_chan chan<- message_structs.Set_lamp_message) {
+	set_lamp_chan chan<- message_structs.Set_lamp_message, 
+	elevator_state_changes_chan <-chan message_structs.Elevator_state) {
 
 	for {
 		select {
@@ -49,6 +50,8 @@ func Distribute_requests(id string,
 			set_lamp_chan <- set_lamp_message
 			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
 			set_lamp_chan <- set_lamp_message
+		case elevator_state := <-elevator_state_changes_chan:
+			fmt.Println("Distributor: New elevator state: ", elevator_state)
 		}
 	}
 }
