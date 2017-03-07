@@ -29,42 +29,19 @@ func Distribute_requests(
 	for {
 		select {
 		case button_request := <-button_request_chan:
-			button_request.Primary_responsible_elevator = decide_primary_responsible_elevator(local_id)
+			//todo: button comands should always be sent to executor
+			button_request.Primary_responsible_elevator = decide_primary_responsible_elevator(local_id, button_request)
 			if button_request.Primary_responsible_elevator == local_id{
-				requests_to_execute_chan <- button_request			
+				requests_to_execute_chan <- button_request
+				set_request_lights(1, button_request, set_lamp_chan)			
 			}
 			button_request.Message_origin_id = local_id
 			network_request_tx_chan <- button_request
-			
-			set_lamp_message := message_structs.Set_lamp_message{}
-			switch(button_request.Request_type){
-			case hardware_interface.BUTTON_TYPE_CALL_UP:
-				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
-				break
-			case hardware_interface.BUTTON_TYPE_CALL_DOWN:
-				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
-				break
-			case hardware_interface.BUTTON_TYPE_COMMAND:
-				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
-				break
-			}
-			set_lamp_message.Floor = button_request.Floor
-			set_lamp_message.Value = 1
-			set_lamp_chan <- set_lamp_message
 
 		case executed_request := <-executed_requests_chan:
 			fmt.Println("Distributor: Executor completed request: ", executed_request)
 			
-			set_lamp_message := message_structs.Set_lamp_message{}
-			set_lamp_message.Floor = executed_request.Floor
-			set_lamp_message.Value = 0
-
-			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
-			set_lamp_chan <- set_lamp_message
-			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
-			set_lamp_chan <- set_lamp_message
-			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
-			set_lamp_chan <- set_lamp_message
+			set_request_lights(0, executed_request, set_lamp_chan)
 
 			executed_request.Message_origin_id = local_id
 			network_request_tx_chan <- executed_request
@@ -119,6 +96,59 @@ func Distribute_requests(
 }
 
 
-func decide_primary_responsible_elevator(local_id string) string{
-	return local_id
+func set_request_lights(turn_on int,
+	request message_structs.Request, 
+	set_lamp_chan chan<- message_structs.Set_lamp_message){
+
+	set_lamp_message := message_structs.Set_lamp_message{}
+	set_lamp_message.Floor = request.Floor
+	set_lamp_message.Value = turn_on
+	if turn_on == 1{
+		switch(request.Request_type){
+		case hardware_interface.BUTTON_TYPE_CALL_UP:
+			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
+			break
+		case hardware_interface.BUTTON_TYPE_CALL_DOWN:
+			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
+			break
+		case hardware_interface.BUTTON_TYPE_COMMAND:
+			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
+			break
+		}
+	}else{
+		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
+		set_lamp_chan <- set_lamp_message
+		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
+		set_lamp_chan <- set_lamp_message
+		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
+		set_lamp_chan <- set_lamp_message
+	}
+	set_lamp_chan <- set_lamp_message
+}
+
+func decide_primary_responsible_elevator(local_id string, request message_structs.Request) string{
+	max_int := (^0)>>1
+	fastest_time := max_int
+	fastest_elevator_id := local_id
+
+	for elevator_id, elevator_state := range all_elevator_states{
+		time := estimate_time_for_elevator_to_complete_request(elevator_state, request)
+		if time < fastest_time{
+			fastest_elevator_id = elevator_id
+		}
+	}
+	fmt.Println(fastest_elevator_id, " would solve request fastest: ", request)
+	return local_id		//fastest_elevator_id
+}
+
+func estimate_time_for_elevator_to_complete_request(elevator_state message_structs.Elevator_state, request message_structs.Request) int{
+	time := abs(elevator_state.Last_visited_floor - request.Floor)*5
+	return time
+}
+
+func abs(num int)int{
+	if num < 0{
+		return -num
+	}
+	return num
 }
