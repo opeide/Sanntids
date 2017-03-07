@@ -62,6 +62,19 @@ func Distribute_requests(
 			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
 			set_lamp_chan <- set_lamp_message
 
+			executed_request.Message_origin_id = local_id
+			network_request_tx_chan <- executed_request
+
+		case non_local_request := <-network_request_rx_chan:
+			if non_local_request.Message_origin_id == local_id {break}
+
+			if non_local_request.Is_completed{
+				fmt.Println("Distributor: Received non-local completed request: ", non_local_request)
+			}else{
+				fmt.Println("Distributor: Received non-local non-completed request: ", non_local_request)
+			}
+
+
 		case local_elevator_state := <-local_elevator_state_changes_chan:
 			fmt.Println("Distributor: New local elevator state: ", local_elevator_state)
 			local_elevator_state.Elevator_id = local_id
@@ -86,7 +99,7 @@ func Distribute_requests(
 					if lost_elevator_id == local_id {
 						continue
 					}
-					
+
 					delete(all_elevator_states, lost_elevator_id)
 					fmt.Println("Distributor: Deleted ", lost_elevator_id, " from elevator states. ")
 				}
