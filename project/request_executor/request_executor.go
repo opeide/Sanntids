@@ -24,7 +24,7 @@ func Execute_requests(
 	floor_changes_chan <-chan int,
 	set_motor_direction_chan chan<- int, 
 	set_lamp_chan chan<- message_structs.Set_lamp_message, 
-	elevator_state_changes_chan chan<- message_structs.Elevator_state) {
+	local_elevator_state_changes_chan chan<- message_structs.Elevator_state) {
 
 	elevator_initialize_position(set_motor_direction_chan, floor_changes_chan)
 	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}
@@ -63,7 +63,7 @@ func Execute_requests(
 			elevator_attempt_complete_request_at_current_floor(set_motor_direction_chan, set_lamp_chan, executed_requests_chan)
 			elevator_move_in_correct_direction(set_motor_direction_chan)
 
-			elevator_state_changes_chan <- message_structs.Elevator_state{ 
+			local_elevator_state_changes_chan <- message_structs.Elevator_state{ 
 				Last_visited_floor: last_visited_floor,
 				Last_non_stop_motor_direction: last_non_stop_motor_direction}
 
