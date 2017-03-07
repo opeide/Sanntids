@@ -4,7 +4,6 @@ type Request struct {
 	Floor                          int
 	Request_type                   int // Same as button type
 	Primary_responsible_elevator   string
-	Secondary_responsible_elevator string
 	Is_completed                   bool
 }
 
@@ -15,6 +14,7 @@ type Set_lamp_message struct {
 }
 
 type Elevator_state struct{
+	Elevator_id string
 	Last_visited_floor int
 	Last_non_stop_motor_direction int // See hardware_interface for motor directions
 }

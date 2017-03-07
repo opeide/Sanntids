@@ -9,14 +9,17 @@ import (
 
 var all_upward_requests [hardware_interface.N_FLOORS]message_structs.Request
 var all_downward_requests [hardware_interface.N_FLOORS]message_structs.Request
+var all_elevator_states = make(map[string]message_structs.Elevator_state)
+
+var zero_request message_structs.Request = message_structs.Request{}
 
 func Distribute_requests(
 	local_id string,
 	peer_update_chan <-chan peers.PeerUpdate,
 	network_request_rx_chan <-chan message_structs.Request,
 	network_request_tx_chan chan<- message_structs.Request,
-	local_elevator_state_changes_tx_chan <-chan message_structs.Elevator_state,
-	non_local_elevator_state_changes_rx_chan chan<- message_structs.Elevator_state,
+	local_elevator_state_changes_tx_chan chan<- message_structs.Elevator_state,
+	non_local_elevator_state_changes_rx_chan <-chan message_structs.Elevator_state,
 	button_request_chan <-chan message_structs.Request,
 	requests_to_execute_chan chan<- message_structs.Request,
 	executed_requests_chan <-chan message_structs.Request, 
@@ -44,6 +47,7 @@ func Distribute_requests(
 			set_lamp_message.Floor = button_request.Floor
 			set_lamp_message.Value = 1
 			set_lamp_chan <- set_lamp_message
+
 		case executed_request := <-executed_requests_chan:
 			fmt.Println("Distributor: Executor completed request: ", executed_request)
 			
@@ -57,11 +61,35 @@ func Distribute_requests(
 			set_lamp_chan <- set_lamp_message
 			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
 			set_lamp_chan <- set_lamp_message
-		case elevator_state := <-local_elevator_state_changes_chan:
-			fmt.Println("Distributor: New local elevator state: ", elevator_state)
+
+		case local_elevator_state := <-local_elevator_state_changes_chan:
+			fmt.Println("Distributor: New local elevator state: ", local_elevator_state)
+			local_elevator_state.Elevator_id = local_id
+			all_elevator_states[local_id] = local_elevator_state
+			local_elevator_state_changes_tx_chan <- local_elevator_state
+
+		case non_local_elevator_state := <- non_local_elevator_state_changes_rx_chan:
+			if non_local_elevator_state.Elevator_id == local_id {
+				break
+			}
+
+			all_elevator_states[non_local_elevator_state.Elevator_id] = non_local_elevator_state
+			fmt.Println("Distributor: New non-local elevator state: ", non_local_elevator_state)
+
 		case peer_update := <-peer_update_chan:
 			if peer_update.New != "" {
 				fmt.Println("Distributor: New Peer: ", peer_update.New)
+			}
+
+			if len(peer_update.Lost) != 0{
+				for _, lost_elevator_id := range peer_update.Lost {
+					if lost_elevator_id == local_id {
+						continue
+					}
+					
+					delete(all_elevator_states, lost_elevator_id)
+					fmt.Println("Distributor: Deleted ", lost_elevator_id, " from elevator states. ")
+				}
 			}
 		}
 	}
