@@ -51,10 +51,13 @@ func Distribute_requests(
 
 			if non_local_request.Is_completed{
 				fmt.Println("Distributor: Received non-local completed request: ", non_local_request)
+				set_request_lights(0, non_local_request, set_lamp_chan)
 			}else{
 				fmt.Println("Distributor: Received non-local non-completed request: ", non_local_request)
+				set_request_lights(1, non_local_request, set_lamp_chan)		
 				if non_local_request.Primary_responsible_elevator == local_id{
 					fmt.Println("Distributor: Executor should do non-local request")
+					requests_to_execute_chan <- non_local_request
 					non_local_request.Message_origin_id = local_id
 					network_request_tx_chan <- non_local_request
 				}else{
