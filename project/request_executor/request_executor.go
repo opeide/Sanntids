@@ -29,6 +29,10 @@ func Execute_requests(
 	elevator_initialize_position(set_motor_direction_chan, floor_changes_chan)
 	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}
 
+	local_elevator_state_changes_chan <- message_structs.Elevator_state{ 
+				Last_visited_floor: last_visited_floor,
+				Last_non_stop_motor_direction: last_non_stop_motor_direction}
+
 	for {
 		select {
 		case request_to_execute := <-requests_to_execute_chan:
