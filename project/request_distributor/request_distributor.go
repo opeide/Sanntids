@@ -29,11 +29,10 @@ func Distribute_requests(
 	for {
 		select {
 		case button_request := <-button_request_chan:
-			//todo: button comands should always be sent to executor
 			button_request.Primary_responsible_elevator = decide_primary_responsible_elevator(local_id, button_request)
 			if button_request.Primary_responsible_elevator == local_id{
 				requests_to_execute_chan <- button_request
-				set_request_lights(1, button_request, set_lamp_chan)			
+				set_request_lights(set_lamp_chan, button_request, 1)			
 			}
 			button_request.Message_origin_id = local_id
 			network_request_tx_chan <- button_request
@@ -41,7 +40,7 @@ func Distribute_requests(
 		case executed_request := <-executed_requests_chan:
 			fmt.Println("Distributor: Executor completed request: ", executed_request)
 			
-			set_request_lights(0, executed_request, set_lamp_chan)
+			set_request_lights(set_lamp_chan, executed_request, 0)
 
 			executed_request.Message_origin_id = local_id
 			network_request_tx_chan <- executed_request
@@ -51,10 +50,12 @@ func Distribute_requests(
 
 			if non_local_request.Is_completed{
 				fmt.Println("Distributor: Received non-local completed request: ", non_local_request)
-				set_request_lights(0, non_local_request, set_lamp_chan)
+				set_request_lights(set_lamp_chan, non_local_request, 0)
+				//todo: delete request from list
 			}else{
+				//todo: add request if not already added
 				fmt.Println("Distributor: Received non-local non-completed request: ", non_local_request)
-				set_request_lights(1, non_local_request, set_lamp_chan)		
+				set_request_lights(set_lamp_chan, non_local_request, 1)		
 				if non_local_request.Primary_responsible_elevator == local_id{
 					fmt.Println("Distributor: Executor should do non-local request")
 					requests_to_execute_chan <- non_local_request
@@ -82,6 +83,7 @@ func Distribute_requests(
 		case peer_update := <-peer_update_chan:
 			if peer_update.New != "" {
 				fmt.Println("Distributor: New Peer: ", peer_update.New)
+				//todo: send all my requests to the new peer
 			}
 
 			if len(peer_update.Lost) != 0{
@@ -99,9 +101,9 @@ func Distribute_requests(
 }
 
 
-func set_request_lights(turn_on int,
+func set_request_lights(set_lamp_chan chan<- message_structs.Set_lamp_message,
 	request message_structs.Request, 
-	set_lamp_chan chan<- message_structs.Set_lamp_message){
+	turn_on int){
 
 	set_lamp_message := message_structs.Set_lamp_message{}
 	set_lamp_message.Floor = request.Floor
@@ -124,12 +126,16 @@ func set_request_lights(turn_on int,
 		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
 		set_lamp_chan <- set_lamp_message
 		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
-		set_lamp_chan <- set_lamp_message
+		set_lamp_chan <- set_lamp_message	
 	}
 	set_lamp_chan <- set_lamp_message
 }
 
 func decide_primary_responsible_elevator(local_id string, request message_structs.Request) string{
+	if request.Request_type == hardware_interface.BUTTON_TYPE_COMMAND{
+		return local_id
+	}
+
 	max_int := (^0)>>1
 	fastest_time := max_int
 	fastest_elevator_id := local_id
@@ -141,7 +147,7 @@ func decide_primary_responsible_elevator(local_id string, request message_struct
 		}
 	}
 	fmt.Println(fastest_elevator_id, " would solve request fastest: ", request)
-	return local_id		//fastest_elevator_id
+	return fastest_elevator_id
 }
 
 func estimate_time_for_elevator_to_complete_request(elevator_state message_structs.Elevator_state, request message_structs.Request) int{
