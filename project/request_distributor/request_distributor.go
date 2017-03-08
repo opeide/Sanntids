@@ -136,13 +136,13 @@ func decide_primary_responsible_elevator(local_id string, request message_struct
 		return local_id
 	}
 
-	max_int := (^0)>>1
-	fastest_time := max_int
+	fastest_time := estimate_time_for_elevator_to_complete_request(all_elevator_states[local_id], request)
 	fastest_elevator_id := local_id
 
 	for elevator_id, elevator_state := range all_elevator_states{
 		time := estimate_time_for_elevator_to_complete_request(elevator_state, request)
 		if time < fastest_time{
+			fastest_time = time
 			fastest_elevator_id = elevator_id
 		}
 	}
