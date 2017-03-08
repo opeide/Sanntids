@@ -32,7 +32,7 @@ func Distribute_requests(
 			button_request.Primary_responsible_elevator = decide_responsible_elevator(local_id, button_request)
 			if button_request.Primary_responsible_elevator == local_id{
 				requests_to_execute_chan <- button_request
-				set_request_lights(set_lamp_chan, button_request, 1)			
+				set_request_lights(local_id, set_lamp_chan, button_request, 1)			
 			}
 			button_request.Message_origin_id = local_id
 			network_request_tx_chan <- button_request
@@ -40,25 +40,23 @@ func Distribute_requests(
 		case executed_request := <-executed_requests_chan:
 			fmt.Println("Distributor: Executor completed request: ", executed_request)
 			
-			set_request_lights(set_lamp_chan, executed_request, 0)
-			if executed_request
+			set_request_lights(local_id, set_lamp_chan, executed_request, 0)
 
-			if executed_request.Request_type != hardware_interface.LAMP_TYPE_COMMAND{
-				executed_request.Message_origin_id = local_id
-				network_request_tx_chan <- executed_request
-			}
+			executed_request.Message_origin_id = local_id
+			network_request_tx_chan <- executed_request
+		
 			
 		case non_local_request := <-network_request_rx_chan:
-			if non_local_request.Message_origin_id == local_id || executed_request.Request_type == hardware_interface.LAMP_TYPE_COMMAND{break}
+			if non_local_request.Message_origin_id == local_id{break}
 
 			if non_local_request.Is_completed{
 				fmt.Println("Distributor: Received non-local completed request: ", non_local_request)
-				set_request_lights(set_lamp_chan, non_local_request, 0)
+				set_request_lights(local_id, set_lamp_chan, non_local_request, 0)
 				//todo: delete request from list
 			}else{
 				//todo: add request if not already added
 				fmt.Println("Distributor: Received non-local non-completed request: ", non_local_request)
-				set_request_lights(set_lamp_chan, non_local_request, 1)	
+				set_request_lights(local_id, set_lamp_chan, non_local_request, 1)	
 
 				if non_local_request.Primary_responsible_elevator == local_id{
 					fmt.Println("Distributor: Executor should do non-local request")
@@ -110,7 +108,8 @@ func Distribute_requests(
 }
 
 
-func set_request_lights(set_lamp_chan chan<- message_structs.Set_lamp_message,
+func set_request_lights(local_id string,
+	set_lamp_chan chan<- message_structs.Set_lamp_message,
 	request message_structs.Request, 
 	turn_on int){
 
@@ -126,18 +125,22 @@ func set_request_lights(set_lamp_chan chan<- message_structs.Set_lamp_message,
 			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
 			break
 		case hardware_interface.BUTTON_TYPE_COMMAND:
-			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
+			if request.Primary_responsible_elevator == local_id{
+				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
+			}
 			break
 		}
+		set_lamp_chan <- set_lamp_message
 	}else{
 		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
 		set_lamp_chan <- set_lamp_message
 		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
 		set_lamp_chan <- set_lamp_message
-		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
-		set_lamp_chan <- set_lamp_message	
+		if request.Primary_responsible_elevator == local_id{
+			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
+			set_lamp_chan <- set_lamp_message
+		}	
 	}
-	set_lamp_chan <- set_lamp_message
 }
 
 func decide_responsible_elevator(local_id string, request message_structs.Request) string{
