@@ -83,7 +83,9 @@ func Distribute_requests(
 		case peer_update := <-peer_update_chan:
 			if peer_update.New != "" {
 				fmt.Println("Distributor: New Peer: ", peer_update.New)
-				local_elevator_state_changes_tx_chan <- all_elevator_states[local_id]
+				if peer_update.New != local_id {
+					local_elevator_state_changes_tx_chan <- all_elevator_states[local_id]
+				}
 				//todo: send all my requests to the new peer
 			}
 
