@@ -7,16 +7,31 @@ import (
 	"time"
 )
 
-var last_non_stop_motor_direction int = hardware_interface.MOTOR_DIRECTION_UP
-var current_floor int //-1 if not at floor
+const(
+	STATE_TYPE_IDLE = iota
+	STATE_TYPE_DOORS_OPEN
+	STATE_TYPE_MOVING_DOWN
+	STATE_TYPE_MOVING_UP
+)
+var current_elevator_state_type int
+var last_non_stop_motor_direction int
 var last_visited_floor int
-var door_is_open bool = false
 
 var door_just_closed_chan chan int = make(chan int, 1)
+var DOOR_OPEN_TIME int = 3 // Seconds
+var INITIALIZATION_TIMEOUT int = 5 // Seconds
 
 var requests_upward [hardware_interface.N_FLOORS]message_structs.Request
 var requests_downward [hardware_interface.N_FLOORS]message_structs.Request
-var zero_request message_structs.Request = message_structs.Request{} //dette ok?????????????????????????????????????????????????????????????????????????????????????????????
+var requests_command[hardware_interface.N_FLOORS]message_structs.Request
+var zero_request message_structs.Request = message_structs.Request{} 
+
+var requests_to_execute_chan <-chan message_structs.Request
+var executed_requests_chan chan<- message_structs.Request
+var floor_changes_chan <-chan int
+var set_lamp_chan chan<- message_structs.Set_lamp_message
+var set_motor_direction_chan chan<- int
+var local_elevator_state_changes_chan chan<- message_structs.Elevator_state
 
 func Execute_requests(
 	requests_to_execute_chan <-chan message_structs.Request,
@@ -25,13 +40,15 @@ func Execute_requests(
 	set_motor_direction_chan chan<- int, 
 	set_lamp_chan chan<- message_structs.Set_lamp_message, 
 	local_elevator_state_changes_chan chan<- message_structs.Elevator_state) {
+	
+	requests_to_execute_chan = requests_to_execute_chan
+	executed_requests_chan = executed_requests_chan
+	floor_changes_chan = floor_changes_chan
+	set_motor_direction_chan = set_motor_direction_chan
+	set_lamp_chan = set_lamp_chan
+	local_elevator_state_changes_chan = local_elevator_state_changes_chan
 
-	elevator_initialize_position(set_motor_direction_chan, floor_changes_chan)
-	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}
-
-	local_elevator_state_changes_chan <- message_structs.Elevator_state{ 
-				Last_visited_floor: last_visited_floor,
-				Last_non_stop_motor_direction: last_non_stop_motor_direction}
+	elevator_initialize_position()
 
 	for {
 		select {
@@ -46,48 +63,41 @@ func Execute_requests(
 					requests_upward[request_to_execute.Floor] = request_to_execute
 				}
 			case hardware_interface.BUTTON_TYPE_COMMAND:
-				if requests_downward[request_to_execute.Floor] == zero_request {
-					requests_downward[request_to_execute.Floor] = request_to_execute
-				}
-				if requests_upward[request_to_execute.Floor] == zero_request {
-					requests_upward[request_to_execute.Floor] = request_to_execute
+				if requests_command[request_to_execute.Floor] == zero_request {
+					requests_command[request_to_execute.Floor] = request_to_execute
 				}
 			}
 			
-			elevator_attempt_complete_request_at_current_floor(set_motor_direction_chan, set_lamp_chan, executed_requests_chan)
-			elevator_move_in_correct_direction(set_motor_direction_chan)
+			if current_elevator_state_type == STATE_TYPE_IDLE {
+				if request_to_execute.Floor == last_visited_floor {
+					set_state(STATE_TYPE_DOORS_OPEN, last_visited_floor, last_non_stop_motor_direction)
+				} else if request_to_execute.Floor < last_visited_floor {
+					set_state(STATE_TYPE_MOVING_DOWN, last_visited_floor, hardware_interface.MOTOR_DIRECTION_DOWN)
+				} else { // request_to_execute.Floor > last_visited_floor
+					set_state(STATE_TYPE_MOVING_UP, last_visited_floor, hardware_interface.MOTOR_DIRECTION_UP)
+				}
+			}
 
 		case current_floor = <-floor_changes_chan:
 			if current_floor == -1 {
 				break
 			}
-
 			set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}			
 			last_visited_floor = current_floor	
-			elevator_attempt_complete_request_at_current_floor(set_motor_direction_chan, set_lamp_chan, executed_requests_chan)
-			elevator_move_in_correct_direction(set_motor_direction_chan)
-
-			local_elevator_state_changes_chan <- message_structs.Elevator_state{ 
-				Last_visited_floor: last_visited_floor,
-				Last_non_stop_motor_direction: last_non_stop_motor_direction}
+			
+			set_next_correct_state_being_at(last_visited_floor, last_non_stop_motor_direction)
 
 		case <-door_just_closed_chan:
-			door_is_open = false
-			elevator_attempt_complete_request_at_current_floor(set_motor_direction_chan, set_lamp_chan, executed_requests_chan)
-			elevator_move_in_correct_direction(set_motor_direction_chan)
+			set_next_correct_state_being_at(last_visited_floor, last_non_stop_motor_direction))
 		}
 	}
 }
 
-func elevator_initialize_position(
-	set_motor_direction_chan chan<- int,
-	floor_changes_chan <-chan int) {
-
+func elevator_initialize_position() {
 	select {
 	case current_floor = <-floor_changes_chan:
 		if current_floor != -1 {
-			last_visited_floor = current_floor
-			set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP //precautionary measure, do not trust low level init files
+			set_state(STATE_TYPE_IDLE, current_floor, hardware_interface.MOTOR_DIRECTION_DOWN)
 			return
 		}
 	}
@@ -95,134 +105,126 @@ func elevator_initialize_position(
 	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_DOWN
 	select {
 	case current_floor = <-floor_changes_chan:
-		last_visited_floor = current_floor
-		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+		set_state(STATE_TYPE_IDLE, current_floor, hardware_interface.MOTOR_DIRECTION_DOWN)
 		return
-	case <-time.After(time.Second * 5):
-		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_UP
-	}
-	select {
-	case current_floor = <-floor_changes_chan:
-		last_visited_floor = current_floor
-		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
-		return
-	case <-time.After(time.Second * 5):
+	case <-time.After(time.Second * INITIALIZATION_TIMEOUT):
 		break
 	}
+	
 	fmt.Println("ELEVATOR DID NOT FIND ANY FLOORS DURING EXECUTOR INIT. SHOULD RESTART.")
 	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 }
 
-func elevator_attempt_complete_request_at_current_floor(
-	set_motor_direction_chan chan<- int,
-	set_lamp_chan chan<- message_structs.Set_lamp_message,
-	executed_requests_chan chan<- message_structs.Request) {
-
-	if current_floor == -1 || door_is_open{
+// Should only be called when at a floor and finished in state type STATE_TYPE_DOORS_OPEN
+func set_next_correct_state_being_at(current_floor int, current_direction int) {
+	// Should we have this test?
+	/*if current_floor == -1 {
+		switch current_direction {
+		case hardware_interface.MOTOR_DIRECTION_DOWN:
+			return STATE_TYPE_MOVING_DOWN
+		case hardware_interface.MOTOR_DIRECTION_UP:
+			return STATE_TYPE_MOVING_UP
+		}
+	}*/
+	
+	if is_request_at(current_floor, current_direction) {
+		set_state(STATE_TYPE_DOORS_OPEN, current_floor, current_direction)
+		register_finished_requests_at(current_floor)
 		return
 	}
 
-	request_here := get_request_at(current_floor, last_non_stop_motor_direction)
-	if request_here != zero_request {
-		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP //TODO: Turn off lights and open doors
-		door_is_open = true
-		go open_doors_and_close_after_time(set_lamp_chan)
-		request_here.Is_completed = true
-		executed_requests_chan <- request_here
-		set_request_at(current_floor, last_non_stop_motor_direction, zero_request)
-		set_request_at(current_floor, -last_non_stop_motor_direction, zero_request) // See elev.c: -1*dir is opposite dir
+	if has_request_in_direction(current_floor, current_direction) {
+		new_state = motor_direction_to_directional_state(current_direction)
+		set_state(new_state, current_floor, current_direction)
 		return
 	}
 
-	if has_request_in_direction(current_floor, last_non_stop_motor_direction) {
+	if is_request_at(current_floor, -current_direction) {
+		set_state(STATE_TYPE_DOORS_OPEN, current_floor, -current_direction) // Is why we need current_direction argument
+		register_finished_requests_at(current_floor)
 		return
 	}
 
-	request_here = get_request_at(current_floor, -last_non_stop_motor_direction)
-	if request_here != zero_request {
-		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP //TODO: Turn off lights and open doors
-		last_non_stop_motor_direction = -last_non_stop_motor_direction
-		door_is_open = true
-		go open_doors_and_close_after_time(set_lamp_chan)
-		request_here.Is_completed = true
-		executed_requests_chan <- request_here
-		set_request_at(current_floor, last_non_stop_motor_direction, zero_request)
+	if has_request_in_direction(current_floor, -current_direction) {
+		new_state = motor_direction_to_directional_state(-current_direction)
+		set_state(new_state, current_floor, -current_direction)
 		return
 	}
 
-	if has_request_in_direction(current_floor, -last_non_stop_motor_direction) {
-		set_motor_direction_chan <- -last_non_stop_motor_direction
-		last_non_stop_motor_direction = -last_non_stop_motor_direction
-		return
-	}
-
-	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+	set_state(STATE_TYPE_IDLE, current_floor, current_direction)
 }
 
-
-func elevator_move_in_correct_direction(
-	set_motor_direction_chan chan<- int) {
-
-	if door_is_open{
+// Should not be called while not finished in state type DOORS_OPEN
+func set_state(new_state_type int, new_last_visited_floor int, new_last_non_stop_direction int){
+	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_DOOR_OPEN, Value: 0}
+	
+	switch new_state_type{
+	case STATE_TYPE_IDLE:
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
-		return
-	}
-
-	switch current_floor {
-	case -1:
-		set_motor_direction_chan <- last_non_stop_motor_direction
-		return
-	case 0, hardware_interface.N_FLOORS - 1:
+		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: new_last_visited_floor}
+		
+		
+		
+	case STATE_TYPE_DOORS_OPEN:
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: new_last_visited_floor}
+		
+		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_DOOR_OPEN, Value: 1}
+		go func(){
+			select{
+			case  <-time.After(time.Second * DOOR_OPEN_TIME):
+				door_just_closed_chan <- 1
+			}
+		}()
+		
+	case STATE_TYPE_MOVING_DOWN:
+		new_last_non_stop_direction = hardware_interface.MOTOR_DIRECTION_DOWN
+		set_motor_direction_chan <- new_last_non_stop_direction
+		
+	case STATE_TYPE_MOVING_UP:
+		new_last_non_stop_direction = hardware_interface.MOTOR_DIRECTION_UP
+		set_motor_direction_chan <- new_last_non_stop_direction
 	}
-
-	if has_request_in_direction(current_floor, last_non_stop_motor_direction) {
-		set_motor_direction_chan <- last_non_stop_motor_direction
-		return
-	}
-
-	if has_request_in_direction(current_floor, -last_non_stop_motor_direction) {
-		set_motor_direction_chan <- -last_non_stop_motor_direction
-		last_non_stop_motor_direction = -last_non_stop_motor_direction
-		return
-	}
-
-	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+	
+	last_non_stop_motor_direction = new_last_non_stop_direction
+	last_visited_floor = new_last_visited_floor
+	current_elevator_state_type = new_state_type
+	
+	local_elevator_state_changes_chan <- message_structs.Elevator_state{ 
+				Last_visited_floor: last_visited_floor,
+				Last_non_stop_motor_direction: last_non_stop_motor_direction}
 }
 
-
-func open_doors_and_close_after_time(set_lamp_chan chan<- message_structs.Set_lamp_message){
-	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_DOOR_OPEN, Floor: current_floor, Value: 1}
-	select{
-	case  <-time.After(time.Second * 3):
-		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_DOOR_OPEN, Floor: current_floor, Value: 0}
-		door_just_closed_chan <- 1
+// Includes if there is a COMMAND request there
+func is_request_at(floor int, motor_direction int) bool {
+	if requests_command[floor] != zero_request {
+		return true
 	}
-}
-
-func get_request_at(floor int, motor_direction int) message_structs.Request {
+	
 	if motor_direction == hardware_interface.MOTOR_DIRECTION_DOWN {
-		return requests_downward[floor]
+		if requests_downward[floor] != zero_request{
+			return true
+		}
 	}
 
 	if motor_direction == hardware_interface.MOTOR_DIRECTION_UP {
-		return requests_upward[floor]
+		if requests_upward[floor] != zero_request {
+			return true
+		}
 	}
 
-	return zero_request
+	return false
 }
 
-
-func set_request_at(floor int, motor_direction int, request message_structs.Request) {
-	if motor_direction == hardware_interface.MOTOR_DIRECTION_DOWN {
-		requests_downward[floor] = request
-	}
-
-	if motor_direction == hardware_interface.MOTOR_DIRECTION_UP {
-		requests_upward[floor] = request
+func register_finished_requests_at(floor int) {
+	for _, request_array := range [][hardware_interface.N_FLOORS]message_structs.Request{requests_downward, requests_upward, requests_command} {
+		if request_array[floor] != zero_request {
+			request_array[floor].Is_completed = true
+			executed_requests_chan <- request_array[floor]
+			request_array[floor] = zero_request
+		}
 	}
 }
-
 
 func has_request_in_direction(floor int, motor_direction int) bool {
 	if motor_direction == hardware_interface.MOTOR_DIRECTION_DOWN {
@@ -231,7 +233,9 @@ func has_request_in_direction(floor int, motor_direction int) bool {
 		}
 
 		for floor_below := 0; floor_below < floor; floor_below++ {
-			if requests_downward[floor_below] != zero_request || requests_upward[floor_below] != zero_request {
+			if requests_downward[floor_below] != zero_request || 
+				requests_upward[floor_below] != zero_request || 
+				requests_command[floor_below] != zero_request {
 				return true
 			}
 		}
@@ -244,11 +248,27 @@ func has_request_in_direction(floor int, motor_direction int) bool {
 		}
 
 		for floor_above := floor + 1; floor_above < hardware_interface.N_FLOORS; floor_above++ {
-			if requests_downward[floor_above] != zero_request || requests_upward[floor_above] != zero_request {
+			if requests_downward[floor_above] != zero_request || 
+				requests_upward[floor_above] != zero_request ||
+				requests_command[floor_above] != zero_request{
 				return true
 			}
 		}
 		return false
 	}
 	return false
+}
+
+func motor_direction_to_directional_state(motor_direction int) int {
+	if motor_direction == hardware_interface.MOTOR_DIRECTION_DOWN {
+		return STATE_TYPE_MOVING_DOWN
+	}
+	
+	if motor_direction == hardware_interface.MOTOR_DIRECTION_UP {
+		return STATE_TYPE_MOVING_UP
+	}
+	
+	if motor_direction == hardware_interface.MOTOR_DIRECTION_STOP {
+		return STATE_TYPE_IDLE
+	}
 }
