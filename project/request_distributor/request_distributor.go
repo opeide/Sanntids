@@ -140,32 +140,31 @@ func execute_requests_belonging_to(elevator_id string, requests_to_execute_chan 
 	}
 }
 
-
+//var all_upward_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
+//var all_downward_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
+//var all_command_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
 
 func store_request(request message_structs.Request){
-	/*
 	switch request.Request_type{
 		case BUTTON_TYPE_CALL_UP:  
-
+			if all_upward_requests[request.Primary_responsible_elevator][request.Floor] == zero_request{
+				all_upward_requests[request.Primary_responsible_elevator][request.Floor] = request	
+			}	
 		case BUTTON_TYPE_CALL_DOWN: 
-			
+			if all_downward_requests[request.Primary_responsible_elevator][request.Floor] == zero_request{
+				all_downward_requests[request.Primary_responsible_elevator][request.Floor] = request	
+			}	
 		case BUTTON_TYPE_COMMAND:
-			
+			if all_command_requests[request.Primary_responsible_elevator][request.Floor] == zero_request{
+				all_command_requests[request.Primary_responsible_elevator][request.Floor] = request	
+			}	
 	}
-	*/
 }
 
-func delete_request_and_related(request message_structs.Request){
-	/*
-	switch request.Request_type{
-		case BUTTON_TYPE_CALL_UP:  
-
-		case BUTTON_TYPE_CALL_DOWN: 
-			
-		case BUTTON_TYPE_COMMAND:
-
-	}
-	*/
+func delete_request_and_related(request message_structs.Request){ 
+	all_upward_requests[request.Primary_responsible_elevator][request.Floor] = zero_request
+	all_downward_requests[request.Primary_responsible_elevator][request.Floor] = zero_request
+	all_command_requests[request.Primary_responsible_elevator][request.Floor] = zero_request
 }
 
 
