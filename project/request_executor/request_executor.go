@@ -83,7 +83,10 @@ func Execute_requests(
 			}
 
 		case current_floor := <-floor_changes_chan:
-			if current_floor == -1 {
+			if current_floor == -1{
+				if current_elevator_state_type == STATE_TYPE_IDLE{
+					fmt.Println("ELEVATOR IN UNDEFINED STATE: IDLE IN SHAFT. SHOLD RESTART")
+				}
 				break
 			}
 			set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}
