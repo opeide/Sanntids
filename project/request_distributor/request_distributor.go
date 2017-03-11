@@ -15,7 +15,7 @@ var all_command_requests = make(map[string][]message_structs.Request)
 var zero_request message_structs.Request = message_structs.Request{}
 
 var all_elevator_states = make(map[string]message_structs.Elevator_state)
-
+// Remember to do caborders when we get back after losing power!!!!!!!!!!!!!!!
 
 func Distribute_requests(
 	local_id string,
