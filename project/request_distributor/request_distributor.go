@@ -244,7 +244,25 @@ func abs(num int) int {
 }
 
 func print_request_list(){
-	fmt.Println("stored up: ", all_upward_requests)
-	fmt.Println("stored down:", all_downward_requests)
-	fmt.Println("stored command:", all_command_requests)
+	for responsible_id := range all_command_requests {
+		fmt.Print("\n")
+		fmt.Print("\n")
+		fmt.Println("Responsible: ", responsible_id)
+		fmt.Println("--------------------------------------")
+		fmt.Println("\t FLOOR \t UP \t DOWN \t COMMAND")
+		for floor:= 0; < hardware_interface.N_FLOORS; floor++ {
+			fmt.Print("\t", floor, "\t")
+			if all_upward_requests[responsible_id][floor] != zero_request {fmt.Print("*")}
+			else {fmt.Print(" ")}
+			fmt.Print("\t")
+			if all_downward_requests[responsible_id][floor] != zero_request {fmt.Print("*")}
+			else {fmt.Print(" ")}
+			fmt.Print("\t")
+			if all_command_requests[responsible_id][floor] != zero_request {fmt.Print("*")}
+			else {fmt.Print(" ")}
+			fmt.Print("\n")
+		}
+		fmt.Println("--------------------------------------")
+		fmt.Print("\n")
+	}
 }
