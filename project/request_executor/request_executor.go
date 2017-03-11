@@ -20,7 +20,7 @@ var last_visited_floor int
 
 var door_just_closed_chan chan int = make(chan int, 1)
 
-const DOOR_OPEN_TIME = 3         // Seconds
+const DOOR_OPEN_TIME = 2         // Seconds
 const INITIALIZATION_TIMEOUT = 5 // Seconds
 
 var requests_upward [hardware_interface.N_FLOORS]message_structs.Request
@@ -33,6 +33,10 @@ var set_lamp_chan 						chan<- message_structs.Set_lamp_message
 var set_motor_direction_chan 			chan<- int
 var local_elevator_state_changes_chan 	chan<- message_structs.Elevator_state
 var floor_changes_chan 					<-chan int
+
+
+//TODO: make a timer that measures the time in shaft. if more than a specified amount of time passes, something is [wrong]! 
+
 
 func Execute_requests(
 	executed_requests_chan_parameter 			chan<- message_structs.Request,

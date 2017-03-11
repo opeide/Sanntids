@@ -9,7 +9,7 @@ import (
 	"./request_distributor"
 	"./request_executor"
 	"fmt"
-	"os"
+	//"os"
 )
 
 const (
@@ -48,7 +48,7 @@ func main() {
 		fmt.Println("DISCONNECTED FROM NETWORK AT STARTUP. EXITING")
 		return
 	}
-	id := fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
+	id := fmt.Sprintf("peer-%s", localIP)//fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 	fmt.Println("MY ID: ",id)
 	peer_update_chan := make(chan peers.PeerUpdate, 1)
 	peer_tx_enable_chan := make(chan bool, 1) // Currently not in use, but needed to run the peers.Receiver
