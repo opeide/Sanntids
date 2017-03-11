@@ -242,7 +242,7 @@ func print_request_list(){
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
-	//fmPrintln(ids)
+	fmt.Println(ids)
 
 	fmt.Print("\n\n\n\n")
 	for responsible_id := range all_command_requests {
