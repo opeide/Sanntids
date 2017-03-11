@@ -7,9 +7,9 @@ import (
 	"fmt"
 )
 
-var all_upward_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
-var all_downward_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
-var all_command_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
+var all_upward_requests = make(map[string][]message_structs.Request)
+var all_downward_requests = make(map[string][]message_structs.Request)
+var all_command_requests = make(map[string][]message_structs.Request)
 
 var zero_request message_structs.Request = message_structs.Request{}
 
@@ -45,6 +45,7 @@ func Distribute_requests(
 			fmt.Println("Distributor: Executor completed request: ", executed_request)
 			
 			set_request_lights(local_id, set_lamp_chan, executed_request, 0)
+			delete_request_and_related(executed_request)
 
 			executed_request.Message_origin_id = local_id
 			network_request_tx_chan <- executed_request
@@ -89,6 +90,9 @@ func Distribute_requests(
 		case peer_update := <-peer_update_chan:
 			if peer_update.New != "" {
 				fmt.Println("Distributor: New Peer: ", peer_update.New)
+				all_upward_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS) 
+				all_downward_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS) 
+				all_command_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS) 
 				if peer_update.New != local_id {
 					local_elevator_state_changes_tx_chan <- all_elevator_states[local_id]
 				}else{
@@ -101,7 +105,8 @@ func Distribute_requests(
 					if lost_elevator_id == local_id {
 						continue
 					}else{
-						execute_requests_belonging_to(lost_elevator_id, requests_to_execute_chan)
+						inherit_requests_belonging_to(local_id, lost_elevator_id, requests_to_execute_chan)
+
 					}
 
 					delete(all_elevator_states, lost_elevator_id)
@@ -113,7 +118,7 @@ func Distribute_requests(
 }
 
 func send_all_requests_to_network(network_request_tx_chan chan<- message_structs.Request){
-	for _, requests_by_id := range []map[string][hardware_interface.N_FLOORS]message_structs.Request {all_upward_requests, all_downward_requests, all_command_requests}{
+	for _, requests_by_id := range []map[string][]message_structs.Request {all_upward_requests, all_downward_requests, all_command_requests}{
 		for _, request_by_floor := range requests_by_id{
 			for _, request := range request_by_floor{
 				if request != zero_request{
@@ -125,44 +130,49 @@ func send_all_requests_to_network(network_request_tx_chan chan<- message_structs
 }
 
 
-func execute_requests_belonging_to(elevator_id string, requests_to_execute_chan chan<- message_structs.Request){
-	for _, requests_by_id := range []map[string][hardware_interface.N_FLOORS]message_structs.Request {all_upward_requests, all_downward_requests, all_command_requests}{
-		for loop_id, request_by_floor := range requests_by_id{
-			if loop_id != elevator_id {continue}
+func inherit_requests_belonging_to(local_id string, elevator_id string, requests_to_execute_chan chan<- message_structs.Request){
+	for _, requests_by_id := range []map[string][]message_structs.Request {all_upward_requests, all_downward_requests, all_command_requests}{
+		for responsible_id, request_by_floor := range requests_by_id{
+			if responsible_id != elevator_id {continue}
 			for _, request := range request_by_floor{
 				if request != zero_request{
+					request.Primary_responsible_elevator = local_id
+					store_request(request)
 					requests_to_execute_chan <- request
 				}
 			}
+			break
 		}
 	}
+	delete(all_upward_requests, elevator_id)
+	delete(all_downward_requests, elevator_id)
+	delete(all_command_requests, elevator_id)
 }
 
-//var all_upward_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
-//var all_downward_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
-//var all_command_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
 
 func store_request(request message_structs.Request){
 	switch request.Request_type{
-		case BUTTON_TYPE_CALL_UP:  
+		case hardware_interface.BUTTON_TYPE_CALL_UP:  
 			if all_upward_requests[request.Primary_responsible_elevator][request.Floor] == zero_request{
 				all_upward_requests[request.Primary_responsible_elevator][request.Floor] = request	
 			}	
-		case BUTTON_TYPE_CALL_DOWN: 
+		case hardware_interface.BUTTON_TYPE_CALL_DOWN: 
 			if all_downward_requests[request.Primary_responsible_elevator][request.Floor] == zero_request{
 				all_downward_requests[request.Primary_responsible_elevator][request.Floor] = request	
 			}	
-		case BUTTON_TYPE_COMMAND:
+		case hardware_interface.BUTTON_TYPE_COMMAND:
 			if all_command_requests[request.Primary_responsible_elevator][request.Floor] == zero_request{
 				all_command_requests[request.Primary_responsible_elevator][request.Floor] = request	
 			}	
 	}
+	print_request_list()
 }
 
 func delete_request_and_related(request message_structs.Request){ 
 	all_upward_requests[request.Primary_responsible_elevator][request.Floor] = zero_request
 	all_downward_requests[request.Primary_responsible_elevator][request.Floor] = zero_request
 	all_command_requests[request.Primary_responsible_elevator][request.Floor] = zero_request
+	print_request_list()
 }
 
 
@@ -231,4 +241,10 @@ func abs(num int) int {
 		return -num
 	}
 	return num
+}
+
+func print_request_list(){
+	fmt.Println("stored up: ", all_upward_requests)
+	fmt.Println("stored down:", all_downward_requests)
+	fmt.Println("stored command:", all_command_requests)
 }
