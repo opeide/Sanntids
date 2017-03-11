@@ -34,12 +34,12 @@ func main() {
 	local_elevator_state_changes_chan := make(chan message_structs.Elevator_state, 1) // Burde være 3 eller noe slikt? Ettersom det kommer 3 på rad av og til. 
 
 	go request_executor.Execute_requests(
-		requests_to_execute_chan,
 		executed_requests_chan,
-		floor_changes_chan,
-		set_motor_direction_chan, 
+		set_motor_direction_chan,
 		set_lamp_chan, 
-		local_elevator_state_changes_chan)
+		local_elevator_state_changes_chan, 
+		floor_changes_chan, 
+		requests_to_execute_chan)
 
 	// Network module
 	localIP, err := localip.LocalIP()
@@ -63,15 +63,15 @@ func main() {
 
 	go request_distributor.Distribute_requests(
 		id,
-		peer_update_chan,
-		network_request_rx_chan,
 		network_request_tx_chan,
 		local_elevator_state_changes_tx_chan,
+		requests_to_execute_chan,
+		set_lamp_chan,
+		peer_update_chan,
+		network_request_rx_chan,
 		non_local_elevator_state_changes_rx_chan,
 		button_request_chan,
-		requests_to_execute_chan,
-		executed_requests_chan, 
-		set_lamp_chan, 
+		executed_requests_chan,
 		local_elevator_state_changes_chan)
 
 	select {}

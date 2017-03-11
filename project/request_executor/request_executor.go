@@ -28,22 +28,20 @@ var requests_downward [hardware_interface.N_FLOORS]message_structs.Request
 var requests_command [hardware_interface.N_FLOORS]message_structs.Request
 var zero_request message_structs.Request = message_structs.Request{}
 
-var requests_to_execute_chan <-chan message_structs.Request
-var executed_requests_chan chan<- message_structs.Request
-var floor_changes_chan <-chan int
-var set_lamp_chan chan<- message_structs.Set_lamp_message
-var set_motor_direction_chan chan<- int
-var local_elevator_state_changes_chan chan<- message_structs.Elevator_state
+var executed_requests_chan 				chan<- message_structs.Request
+var set_lamp_chan 						chan<- message_structs.Set_lamp_message
+var set_motor_direction_chan 			chan<- int
+var local_elevator_state_changes_chan 	chan<- message_structs.Elevator_state
+var floor_changes_chan 					<-chan int
 
 func Execute_requests(
-	requests_to_execute_chan_parameter <-chan message_structs.Request,
-	executed_requests_chan_parameter chan<- message_structs.Request,
-	floor_changes_chan_parameter <-chan int,
-	set_motor_direction_chan_parameter chan<- int,
-	set_lamp_chan_parameter chan<- message_structs.Set_lamp_message,
-	local_elevator_state_changes_chan_parameter chan<- message_structs.Elevator_state) {
+	executed_requests_chan_parameter 			chan<- message_structs.Request,
+	set_motor_direction_chan_parameter 			chan<- int,
+	set_lamp_chan_parameter 					chan<- message_structs.Set_lamp_message,
+	local_elevator_state_changes_chan_parameter chan<- message_structs.Elevator_state, 
+	floor_changes_chan_parameter 				<-chan int,
+	requests_to_execute_chan 					<-chan message_structs.Request) {
 
-	requests_to_execute_chan = requests_to_execute_chan_parameter
 	executed_requests_chan = executed_requests_chan_parameter
 	floor_changes_chan = floor_changes_chan_parameter
 	set_motor_direction_chan = set_motor_direction_chan_parameter

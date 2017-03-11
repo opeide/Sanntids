@@ -4,7 +4,7 @@ type Request struct {
 	Message_origin_id				string
 	Floor                          	int
 	Request_type                   	int // Same as button type
-	Primary_responsible_elevator   	string
+	Responsible_elevator   	string
 	Is_completed                   	bool
 }
 
