@@ -88,7 +88,7 @@ func Distribute_requests(
 				if peer_update.New != local_id {
 					local_elevator_state_changes_tx_chan <- all_elevator_states[local_id]
 				}
-				
+
 				// new peer, send all stored requests on network
 				for _, requests_list_by_id := range []map[string][]message_structs.Request {all_upward_requests, all_downward_requests, all_command_requests}{
 					for _, request_list_by_floor := range requests_list_by_id{
@@ -111,7 +111,7 @@ func Distribute_requests(
 								if responsible_id == lost_elevator_id {
 									for _, request := range request_list_by_floor{
 										if request != zero_request{
-											delete_request_except_non_local_command(request)
+											delete_request_except_non_completed_command(request)
 											if request.Request_type != hardware_interface.BUTTON_TYPE_COMMAND{
 												request.Responsible_elevator = local_id
 											}
@@ -159,14 +159,14 @@ func distribute_request(request message_structs.Request){
 
 func register_finished_request(request message_structs.Request){
 	set_request_lights(request, 0)
-	delete_request_except_non_local_command(request)
+	delete_request_except_non_completed_command(request)
 	print_request_list()
 }
 
-func delete_request_except_non_local_command(request message_structs.Request){
+func delete_request_except_non_completed_command(request message_structs.Request){
 	all_upward_requests[request.Responsible_elevator][request.Floor] = zero_request
 	all_downward_requests[request.Responsible_elevator][request.Floor] = zero_request
-	if request.Responsible_elevator == local_id{
+	if request.Is_completed{
 		all_command_requests[request.Responsible_elevator][request.Floor] = zero_request
 	}
 }
