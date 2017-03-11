@@ -249,17 +249,17 @@ func print_request_list(){
 		fmt.Print("\n")
 		fmt.Println("Responsible: ", responsible_id)
 		fmt.Println("--------------------------------------")
-		fmt.Println("\t FLOOR \t UP \t DOWN \t COMMAND")
-		for floor:= 0; < hardware_interface.N_FLOORS; floor++ {
+		fmt.Println("\tFLOOR\tUP\tDOWN\tCOMMAND")
+		for floor:= hardware_interface.N_FLOORS-1; floor >= 0 ; floor--{
 			fmt.Print("\t", floor, "\t")
-			if all_upward_requests[responsible_id][floor] != zero_request {fmt.Print("*")}
-			else {fmt.Print(" ")}
+			if all_upward_requests[responsible_id][floor] != zero_request {fmt.Print("*")
+			}else {fmt.Print(" ")}
 			fmt.Print("\t")
-			if all_downward_requests[responsible_id][floor] != zero_request {fmt.Print("*")}
-			else {fmt.Print(" ")}
+			if all_downward_requests[responsible_id][floor] != zero_request {fmt.Print("*")
+			}else {fmt.Print(" ")}
 			fmt.Print("\t")
-			if all_command_requests[responsible_id][floor] != zero_request {fmt.Print("*")}
-			else {fmt.Print(" ")}
+			if all_command_requests[responsible_id][floor] != zero_request {fmt.Print("*")
+			}else {fmt.Print(" ")}
 			fmt.Print("\n")
 		}
 		fmt.Println("--------------------------------------")
