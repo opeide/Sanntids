@@ -81,9 +81,7 @@ func Distribute_requests(
 			local_elevator_state_changes_tx_chan <- local_elevator_state
 
 		case non_local_elevator_state := <-non_local_elevator_state_changes_rx_chan:
-			if non_local_elevator_state.Elevator_id == local_id {
-				break
-			}
+			if non_local_elevator_state.Elevator_id == local_id {break}
 
 			all_elevator_states[non_local_elevator_state.Elevator_id] = non_local_elevator_state
 			fmt.Println("Distributor: New non-local elevator state: ", non_local_elevator_state)
@@ -97,7 +95,7 @@ func Distribute_requests(
 				if peer_update.New != local_id {
 					local_elevator_state_changes_tx_chan <- all_elevator_states[local_id]
 				}else{
-					send_all_requests_to_network(network_request_tx_chan)
+					send_all_requests_to_network(local_id, network_request_tx_chan)
 				}				
 			}
 
@@ -107,22 +105,21 @@ func Distribute_requests(
 						continue
 					}else{
 						inherit_requests_belonging_to(local_id, lost_elevator_id, requests_to_execute_chan)
-
+						delete(all_elevator_states, lost_elevator_id)
+						fmt.Println("Distributor: Deleted ", lost_elevator_id, " from elevator states. ")
 					}
-
-					delete(all_elevator_states, lost_elevator_id)
-					fmt.Println("Distributor: Deleted ", lost_elevator_id, " from elevator states. ")
 				}
 			}
 		}
 	}
 }
 
-func send_all_requests_to_network(network_request_tx_chan chan<- message_structs.Request){
+func send_all_requests_to_network(local_id string, network_request_tx_chan chan<- message_structs.Request){
 	for _, requests_by_id := range []map[string][]message_structs.Request {all_upward_requests, all_downward_requests, all_command_requests}{
 		for _, request_by_floor := range requests_by_id{
 			for _, request := range request_by_floor{
 				if request != zero_request{
+					request.Message_origin_id = local_id
 					network_request_tx_chan <- request
 				}
 			}
@@ -186,6 +183,7 @@ func set_request_lights(local_id string,
 	set_lamp_message.Floor = request.Floor
 	set_lamp_message.Value = turn_on
 	if turn_on == 1 {
+		fmt.Println("turning on lights for request: ", request)
 		switch request.Request_type {
 		case hardware_interface.BUTTON_TYPE_CALL_UP:
 			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
@@ -194,10 +192,11 @@ func set_request_lights(local_id string,
 			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
 			break
 		case hardware_interface.BUTTON_TYPE_COMMAND:
+			fmt.Println("Commmand lights")
 			if request.Primary_responsible_elevator == local_id{
 				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
-			}
-			break
+				break
+			}else{return}
 		}
 		set_lamp_chan <- set_lamp_message
 	}else{
