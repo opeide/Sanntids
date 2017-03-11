@@ -244,8 +244,8 @@ func abs(num int) int {
 }
 
 func print_request_list(){
+	fmt.Print("\n\n\n\n")
 	for responsible_id := range all_command_requests {
-		fmt.Print("\n")
 		fmt.Print("\n")
 		fmt.Println("Responsible: ", responsible_id)
 		fmt.Println("--------------------------------------")
@@ -265,4 +265,6 @@ func print_request_list(){
 		fmt.Println("--------------------------------------")
 		fmt.Print("\n")
 	}
+	fmt.Print("\n\n\n\n")
+
 }
