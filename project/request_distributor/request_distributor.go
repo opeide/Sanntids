@@ -247,11 +247,11 @@ func abs(num int) int {
 func print_request_list(){
 	var ids []string
 	for id := range all_command_requests{
-		fmt.Println(id)
+		//fmt.Println(id)
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
-	Println(ids)
+	//fmPrintln(ids)
 
 	fmt.Print("\n\n\n\n")
 	for responsible_id := range all_command_requests {
