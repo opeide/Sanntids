@@ -5,6 +5,7 @@ import (
 	"../message_structs"
 	"../network/peers"
 	"fmt"
+	"sort"
 )
 
 var all_upward_requests = make(map[string][]message_structs.Request)
@@ -244,6 +245,14 @@ func abs(num int) int {
 }
 
 func print_request_list(){
+	var ids []string
+	for id := range all_command_requests{
+		fmt.Println(id)
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	Println(ids)
+
 	fmt.Print("\n\n\n\n")
 	for responsible_id := range all_command_requests {
 		fmt.Print("\n")
