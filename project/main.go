@@ -8,6 +8,7 @@ import (
 	"./network/peers"
 	"./request_distributor"
 	"./request_executor"
+	"./request_watchdog"
 	"fmt"
 	//"os"
 )
@@ -61,6 +62,9 @@ func main() {
 	go bcast.Transmitter(network_request_port, network_request_tx_chan, local_elevator_state_changes_tx_chan)
 	go bcast.Receiver(network_request_port, network_request_rx_chan, non_local_elevator_state_changes_rx_chan)
 
+	timed_out_requests_chan := make(chan message_structs.Request, 1)
+	request_watchdog.Init(timed_out_requests_chan)
+
 	go request_distributor.Distribute_requests(
 		id,
 		network_request_tx_chan,
@@ -72,7 +76,8 @@ func main() {
 		non_local_elevator_state_changes_rx_chan,
 		button_request_chan,
 		executed_requests_chan,
-		local_elevator_state_changes_chan)
+		local_elevator_state_changes_chan,
+		timed_out_requests_chan)
 
 	select {}
 }

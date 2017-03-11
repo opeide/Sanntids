@@ -4,6 +4,7 @@ import (
 	"../hardware_interface"
 	"../message_structs"
 	"../network/peers"
+	"../request_watchdog"
 	"fmt"
 	"sort"
 )
@@ -35,7 +36,8 @@ func Distribute_requests(
 	non_local_elevator_state_changes_rx_chan 		<-chan message_structs.Elevator_state,
 	button_request_chan 							<-chan message_structs.Request,
 	executed_requests_chan 							<-chan message_structs.Request,
-	local_elevator_state_changes_chan 				<-chan message_structs.Elevator_state) {
+	local_elevator_state_changes_chan 				<-chan message_structs.Elevator_state,
+	timed_out_requests_chan							<-chan message_structs.Request) {
 	
 	local_id 								= local_id_parameter
 	network_request_tx_chan 				= network_request_tx_chan_parameter
@@ -74,6 +76,19 @@ func Distribute_requests(
 		case non_local_elevator_state := <-non_local_elevator_state_changes_rx_chan:
 			if non_local_elevator_state.Elevator_id == local_id {break}
 			all_elevator_states[non_local_elevator_state.Elevator_id] = non_local_elevator_state
+
+		case timed_out_request := <-timed_out_requests_chan:
+			if timed_out_request.Responsible_elevator == local_id{
+				fmt.Println("Timed out on local request: ", timed_out_request)
+				register_request(timed_out_request)
+				distribute_request(timed_out_request)
+				//todo: restart
+				break
+			}
+			fmt.Println("Timed out on non-local request: ", timed_out_request)			
+			timed_out_request.Responsible_elevator = local_id			
+			register_request(timed_out_request)
+			distribute_request(timed_out_request)
 
 		case peer_update := <-peer_update_chan:
 			if peer_update.New != "" {
@@ -131,6 +146,7 @@ func Distribute_requests(
 }
 
 func register_request(request message_structs.Request){
+	request_watchdog.Timer_start(request)
 	switch request.Request_type{
 		case hardware_interface.BUTTON_TYPE_CALL_UP:  
 			if all_upward_requests[request.Responsible_elevator][request.Floor] == zero_request{
@@ -169,6 +185,7 @@ func delete_request_except_non_completed_command(request message_structs.Request
 	if request.Is_completed{
 		all_command_requests[request.Responsible_elevator][request.Floor] = zero_request
 	}
+	request_watchdog.Timer_stop(request)
 }
 
 func set_request_lights(request message_structs.Request, value int){
