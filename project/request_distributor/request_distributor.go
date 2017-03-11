@@ -15,6 +15,7 @@ var zero_request message_structs.Request = message_structs.Request{}
 
 var all_elevator_states = make(map[string]message_structs.Elevator_state)
 
+
 func Distribute_requests(
 	local_id string,
 	peer_update_chan <-chan peers.PeerUpdate,
@@ -34,7 +35,7 @@ func Distribute_requests(
 			button_request.Primary_responsible_elevator = decide_responsible_elevator(local_id, button_request)
 			if button_request.Primary_responsible_elevator == local_id {
 				requests_to_execute_chan <- button_request
-				set_request_lights(local_id, set_lamp_chan, button_request, 1)
+				set_request_lights(local_id, set_lamp_chan, button_request, 1)			
 			}
 			store_request(button_request)
 			button_request.Message_origin_id = local_id
@@ -42,25 +43,24 @@ func Distribute_requests(
 
 		case executed_request := <-executed_requests_chan:
 			fmt.Println("Distributor: Executor completed request: ", executed_request)
-
+			
 			set_request_lights(local_id, set_lamp_chan, executed_request, 0)
 
 			executed_request.Message_origin_id = local_id
 			network_request_tx_chan <- executed_request
-
+		
+			
 		case non_local_request := <-network_request_rx_chan:
-			if non_local_request.Message_origin_id == local_id {
-				break
-			}
+			if non_local_request.Message_origin_id == local_id{break}
 
 			if non_local_request.Is_completed {
 				fmt.Println("Distributor: Received non-local completed request: ", non_local_request)
 				set_request_lights(local_id, set_lamp_chan, non_local_request, 0)
 				delete_request_and_related(non_local_request)
-			} else {
+			}else{
 				store_request(non_local_request)
 				fmt.Println("Distributor: Received non-local non-completed request: ", non_local_request)
-				set_request_lights(local_id, set_lamp_chan, non_local_request, 1)
+				set_request_lights(local_id, set_lamp_chan, non_local_request, 1)	
 
 				if non_local_request.Primary_responsible_elevator == local_id {
 					fmt.Println("Distributor: Executor should do non-local request")
@@ -91,16 +91,16 @@ func Distribute_requests(
 				fmt.Println("Distributor: New Peer: ", peer_update.New)
 				if peer_update.New != local_id {
 					local_elevator_state_changes_tx_chan <- all_elevator_states[local_id]
-				} else {
+				}else{
 					send_all_requests_to_network(network_request_tx_chan)
-				}
+				}				
 			}
 
 			if len(peer_update.Lost) != 0 {
 				for _, lost_elevator_id := range peer_update.Lost {
 					if lost_elevator_id == local_id {
 						continue
-					} else {
+					}else{
 						execute_requests_belonging_to(lost_elevator_id, requests_to_execute_chan)
 					}
 
@@ -112,13 +112,11 @@ func Distribute_requests(
 	}
 }
 
-//all_upward_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
-func send_all_requests_to_network(network_request_tx_chan chan<- message_structs.Request) {
-	// This for each loop makes copies of the arrays, not references.
-	for _, requests_by_id := range []map[string][hardware_interface.N_FLOORS]message_structs.Request{all_upward_requests, all_downward_requests, all_command_requests} {
-		for _, request_by_floor := range requests_by_id {
-			for _, request := range request_by_floor {
-				if request != zero_request {
+func send_all_requests_to_network(network_request_tx_chan chan<- message_structs.Request){
+	for _, requests_by_id := range []map[string][hardware_interface.N_FLOORS]message_structs.Request {all_upward_requests, all_downward_requests, all_command_requests}{
+		for _, request_by_floor := range requests_by_id{
+			for _, request := range request_by_floor{
+				if request != zero_request{
 					network_request_tx_chan <- request
 				}
 			}
@@ -126,14 +124,13 @@ func send_all_requests_to_network(network_request_tx_chan chan<- message_structs
 	}
 }
 
-func execute_requests_belonging_to(elevator_id string, requests_to_execute_chan chan<- message_structs.Request) {
-	for _, requests_by_id := range []map[string][hardware_interface.N_FLOORS]message_structs.Request{all_upward_requests, all_downward_requests, all_command_requests} {
-		for loop_id, request_by_floor := range requests_by_id {
-			if loop_id != elevator_id {
-				continue
-			}
-			for _, request := range request_by_floor {
-				if request != zero_request {
+
+func execute_requests_belonging_to(elevator_id string, requests_to_execute_chan chan<- message_structs.Request){
+	for _, requests_by_id := range []map[string][hardware_interface.N_FLOORS]message_structs.Request {all_upward_requests, all_downward_requests, all_command_requests}{
+		for loop_id, request_by_floor := range requests_by_id{
+			if loop_id != elevator_id {continue}
+			for _, request := range request_by_floor{
+				if request != zero_request{
 					requests_to_execute_chan <- request
 				}
 			}
@@ -141,36 +138,38 @@ func execute_requests_belonging_to(elevator_id string, requests_to_execute_chan 
 	}
 }
 
-func store_request(request message_structs.Request) {
-	/*
-		switch request.Request_type{
-			case BUTTON_TYPE_CALL_UP:
+//var all_upward_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
+//var all_downward_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
+//var all_command_requests map[string][hardware_interface.N_FLOORS]message_structs.Request
 
-			case BUTTON_TYPE_CALL_DOWN:
-
-			case BUTTON_TYPE_COMMAND:
-
-		}
-	*/
+func store_request(request message_structs.Request){
+	switch request.Request_type{
+		case BUTTON_TYPE_CALL_UP:  
+			if all_upward_requests[request.Primary_responsible_elevator][request.Floor] == zero_request{
+				all_upward_requests[request.Primary_responsible_elevator][request.Floor] = request	
+			}	
+		case BUTTON_TYPE_CALL_DOWN: 
+			if all_downward_requests[request.Primary_responsible_elevator][request.Floor] == zero_request{
+				all_downward_requests[request.Primary_responsible_elevator][request.Floor] = request	
+			}	
+		case BUTTON_TYPE_COMMAND:
+			if all_command_requests[request.Primary_responsible_elevator][request.Floor] == zero_request{
+				all_command_requests[request.Primary_responsible_elevator][request.Floor] = request	
+			}	
+	}
 }
 
-func delete_request_and_related(request message_structs.Request) {
-	/*
-		switch request.Request_type{
-			case BUTTON_TYPE_CALL_UP:
-
-			case BUTTON_TYPE_CALL_DOWN:
-
-			case BUTTON_TYPE_COMMAND:
-
-		}
-	*/
+func delete_request_and_related(request message_structs.Request){ 
+	all_upward_requests[request.Primary_responsible_elevator][request.Floor] = zero_request
+	all_downward_requests[request.Primary_responsible_elevator][request.Floor] = zero_request
+	all_command_requests[request.Primary_responsible_elevator][request.Floor] = zero_request
 }
+
 
 func set_request_lights(local_id string,
 	set_lamp_chan chan<- message_structs.Set_lamp_message,
-	request message_structs.Request,
-	turn_on int) {
+	request message_structs.Request, 
+	turn_on int){
 
 	set_lamp_message := message_structs.Set_lamp_message{}
 	set_lamp_message.Floor = request.Floor
@@ -184,21 +183,22 @@ func set_request_lights(local_id string,
 			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
 			break
 		case hardware_interface.BUTTON_TYPE_COMMAND:
-			if request.Primary_responsible_elevator == local_id {
+			if request.Primary_responsible_elevator == local_id{
 				set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
 			}
 			break
 		}
 		set_lamp_chan <- set_lamp_message
-	} else {
+	}else{
 		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_UP
 		set_lamp_chan <- set_lamp_message
 		set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_DOWN
 		set_lamp_chan <- set_lamp_message
-		if request.Primary_responsible_elevator == local_id {
+
+		if request.Primary_responsible_elevator == local_id{
 			set_lamp_message.Lamp_type = hardware_interface.LAMP_TYPE_COMMAND
 			set_lamp_chan <- set_lamp_message
-		}
+		}	
 	}
 }
 
