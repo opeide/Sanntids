@@ -151,6 +151,15 @@ func Distribute_requests(
 }
 
 func register_request(request message_structs.Request) {
+	if _, ok := all_upward_requests[peer_update.New]; !ok {
+		fmt.Println("ID not in all upward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	}
+	if _, ok := all_downward_requests[peer_update.New]; !ok {
+		fmt.Println("ID not in all downward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	}
+	if _, ok := all_command_requests[peer_update.New]; !ok {
+		fmt.Println("ID not in all command requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	}
 	request_watchdog.Timer_start(request)
 	switch request.Request_type {
 	case hardware_interface.BUTTON_TYPE_CALL_UP:
@@ -280,6 +289,17 @@ func estimate_time_for_elevator_to_complete_request(elevator_state message_struc
 		}
 		starting_floor = last_stop_floor
 	}
+
+	if _, ok := all_upward_requests[peer_update.New]; !ok {
+		fmt.Println("est: ID not in all upward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	}
+	if _, ok := all_downward_requests[peer_update.New]; !ok {
+		fmt.Println("est: ID not in all downward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	}
+	if _, ok := all_command_requests[peer_update.New]; !ok {
+		fmt.Println("est: ID not in all command requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	}
+
 	fmt.Println("SIMULATOR NEVER REACHED FLOOR! SHOULD NOT HAPPEN!")
 	return total_time
 }
