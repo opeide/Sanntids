@@ -57,6 +57,21 @@ func Execute_requests(
 
 	for {
 		select {
+		case current_floor := <-floor_changes_chan:
+			if current_floor == -1 {
+				if current_elevator_state_type == STATE_TYPE_IDLE {
+					fmt.Println("ILLEGAL STATE: IDLE IN SHAFT. Exiting...")
+					os.Exit(0) //Lets backup take over (effectively a program restart)
+				}
+				break
+			}
+
+			motor_movement_watchdog.Timer_stop()
+
+			set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}
+			last_visited_floor = current_floor
+			set_next_correct_state_being_at(last_visited_floor, last_non_stop_motor_direction)
+
 		case request_to_execute := <-requests_to_execute_chan:
 			switch request_to_execute.Request_type {
 			case hardware_interface.BUTTON_TYPE_CALL_DOWN:
@@ -82,21 +97,6 @@ func Execute_requests(
 					set_state(STATE_TYPE_MOVING_UP, last_visited_floor, hardware_interface.MOTOR_DIRECTION_UP)
 				}
 			}
-
-		case current_floor := <-floor_changes_chan:
-			if current_floor == -1 {
-				if current_elevator_state_type == STATE_TYPE_IDLE {
-					fmt.Println("ILLEGAL STATE: IDLE IN SHAFT. Exiting...")
-					os.Exit(0) //Lets backup take over (effectively a program restart)
-				}
-				break
-			}
-
-			motor_movement_watchdog.Timer_stop()
-
-			set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}
-			last_visited_floor = current_floor
-			set_next_correct_state_being_at(last_visited_floor, last_non_stop_motor_direction)
 
 		case <-door_just_closed_chan:
 			register_finished_requests_at(last_visited_floor)
