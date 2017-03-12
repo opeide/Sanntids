@@ -7,6 +7,7 @@ package request_watchdog
 import (
 	"../hardware_interface"
 	"../message_structs"
+	"fmt"
 	"time"
 )
 
@@ -50,6 +51,7 @@ func timer_thread(request message_structs.Request) {
 	case <-stop_channels[request.Responsible_elevator][request.Floor]:
 		active_timers[request.Responsible_elevator][request.Floor] = false
 	case <-time.After(time.Second * timeout_seconds):
+		fmt.Println("Request timed out: ", request)
 		timed_out_requests_chan <- request
 		active_timers[request.Responsible_elevator][request.Floor] = false
 	}
