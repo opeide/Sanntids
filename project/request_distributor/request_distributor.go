@@ -323,6 +323,12 @@ func print_request_list() {
 			} else {
 				fmt.Print(" ")
 			}
+			fmt.Print("\t")
+			if all_elevator_states[responsible_id].Last_visited_floor == floor {
+				fmt.Print("#")
+			} else {
+				fmt.Print(" ")
+			}
 			fmt.Print("\n")
 		}
 		fmt.Println("--------------------------------------")
