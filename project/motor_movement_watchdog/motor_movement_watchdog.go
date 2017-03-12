@@ -13,11 +13,9 @@ var timer_has_stopped_chan = make(chan int)
 var timer_is_active = false
 
 func Timer_start() {
-	fmt.Println("Attempting to start motor movement timer...")
 	if !timer_is_active {
 		timer_is_active = true
 		go timer_thread()
-		fmt.Println("Started motor movement timer")
 	}
 }
 
@@ -27,7 +25,6 @@ func Timer_stop() {
 	}
 	select {
 	case <-timer_has_stopped_chan:
-		fmt.Println("Stopped motor movement timer")
 	}
 }
 
