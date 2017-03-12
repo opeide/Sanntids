@@ -7,7 +7,6 @@ package request_watchdog
 import (
 	"../hardware_interface"
 	"../message_structs"
-	"fmt"
 	"time"
 )
 
@@ -34,7 +33,6 @@ func Timer_start(request message_structs.Request) {
 		stop_channels[request.Responsible_elevator][request.Floor] = make(chan int, 1)
 
 		go timer_thread(request)
-		fmt.Println("Started timer for: ", request)
 	}
 }
 
@@ -43,7 +41,6 @@ func Timer_stop(request message_structs.Request) {
 		if active_timers[request.Responsible_elevator][request.Floor] {
 			stop_channels[request.Responsible_elevator][request.Floor] <- 1
 		}
-		fmt.Println("Stopped timer for: ", request)
 	}
 }
 

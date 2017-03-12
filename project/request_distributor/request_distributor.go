@@ -4,6 +4,7 @@ import (
 	"../hardware_interface"
 	"../message_structs"
 	"../network/peers"
+	"../request_executor"
 	"../request_watchdog"
 	"fmt"
 	"os"
@@ -240,13 +241,47 @@ func decide_responsible_elevator(request message_structs.Request) string {
 			fastest_elevator_id = elevator_id
 		}
 	}
-	fmt.Println(fastest_elevator_id, " would solve request fastest: ", request)
+	fmt.Println(fastest_elevator_id, " would solve request fastest: ", fastest_time, request)
 	return fastest_elevator_id
 }
 
 func estimate_time_for_elevator_to_complete_request(elevator_state message_structs.Elevator_state, request message_structs.Request) int {
-	time := abs(elevator_state.Last_visited_floor-request.Floor) * 5
-	return time
+	elevator_id := elevator_state.Elevator_id
+
+	request_list_by_motor_direction := map[int]map[string][]message_structs.Request{hardware_interface.MOTOR_DIRECTION_DOWN: all_downward_requests, hardware_interface.MOTOR_DIRECTION_UP: all_upward_requests}
+	endfloor_in_motor_direction := map[int]int{hardware_interface.MOTOR_DIRECTION_DOWN: -1, hardware_interface.MOTOR_DIRECTION_UP: hardware_interface.N_FLOORS}
+
+	total_time := 0
+	starting_floor := elevator_state.Last_visited_floor
+	last_stop_floor := starting_floor
+	starting_motor_direction := elevator_state.Last_non_stop_motor_direction
+
+	for _, motor_direction := range []int{starting_motor_direction, -starting_motor_direction, starting_motor_direction} { // Using that motor directions are +/-1. See hardware_interface for definitions
+		for floor := starting_floor; floor != endfloor_in_motor_direction[motor_direction]; floor += motor_direction {
+			if floor == request.Floor {
+				total_time += abs(last_stop_floor-floor) * request_executor.ESTIMATED_TIME_BETWEEN_FLOORS
+				last_stop_floor = floor
+				if request.Request_type == hardware_interface.BUTTON_TYPE_COMMAND ||
+					request.Request_type == hardware_interface.BUTTON_TYPE_CALL_UP && motor_direction == hardware_interface.MOTOR_DIRECTION_UP ||
+					request.Request_type == hardware_interface.BUTTON_TYPE_CALL_DOWN && motor_direction == hardware_interface.MOTOR_DIRECTION_DOWN {
+
+					return total_time
+				}
+			}
+
+			if request_list_by_motor_direction[motor_direction][elevator_id][floor] != zero_request || all_command_requests[elevator_id][floor] != zero_request {
+				total_time += abs(last_stop_floor-floor) * request_executor.ESTIMATED_TIME_BETWEEN_FLOORS
+				if request.Floor == floor {
+					return total_time
+				}
+				total_time += request_executor.DOOR_OPEN_TIME
+				last_stop_floor = floor
+			}
+		}
+		starting_floor = last_stop_floor
+	}
+	fmt.Println("SIMULATOR NEVER REACHED FLOOR! SHOULD NOT HAPPEN!")
+	return total_time
 }
 
 func abs(num int) int {

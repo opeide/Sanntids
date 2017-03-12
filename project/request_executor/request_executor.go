@@ -22,8 +22,9 @@ var last_visited_floor int
 
 var door_just_closed_chan chan int = make(chan int, 1)
 
-const DOOR_OPEN_TIME = 2         // Seconds
-const INITIALIZATION_TIMEOUT = 5 // Seconds
+const DOOR_OPEN_TIME = 2                // Seconds
+const INITIALIZATION_TIMEOUT = 5        // Seconds
+const ESTIMATED_TIME_BETWEEN_FLOORS = 2 //seconds
 
 var requests_upward [hardware_interface.N_FLOORS]message_structs.Request
 var requests_downward [hardware_interface.N_FLOORS]message_structs.Request
