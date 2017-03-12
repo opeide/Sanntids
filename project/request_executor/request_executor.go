@@ -4,6 +4,7 @@ import (
 	"../hardware_interface"
 	"../message_structs"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -28,23 +29,21 @@ var requests_downward [hardware_interface.N_FLOORS]message_structs.Request
 var requests_command [hardware_interface.N_FLOORS]message_structs.Request
 var zero_request message_structs.Request = message_structs.Request{}
 
-var executed_requests_chan 				chan<- message_structs.Request
-var set_lamp_chan 						chan<- message_structs.Set_lamp_message
-var set_motor_direction_chan 			chan<- int
-var local_elevator_state_changes_chan 	chan<- message_structs.Elevator_state
-var floor_changes_chan 					<-chan int
+var executed_requests_chan chan<- message_structs.Request
+var set_lamp_chan chan<- message_structs.Set_lamp_message
+var set_motor_direction_chan chan<- int
+var local_elevator_state_changes_chan chan<- message_structs.Elevator_state
+var floor_changes_chan <-chan int
 
-
-//TODO: make a timer that measures the time in shaft. if more than a specified amount of time passes, something is [wrong]! 
-
+//TODO: make a timer that measures the time in shaft. if more than a specified amount of time passes, something is [wrong]!
 
 func Execute_requests(
-	executed_requests_chan_parameter 			chan<- message_structs.Request,
-	set_motor_direction_chan_parameter 			chan<- int,
-	set_lamp_chan_parameter 					chan<- message_structs.Set_lamp_message,
-	local_elevator_state_changes_chan_parameter chan<- message_structs.Elevator_state, 
-	floor_changes_chan_parameter 				<-chan int,
-	requests_to_execute_chan 					<-chan message_structs.Request) {
+	executed_requests_chan_parameter chan<- message_structs.Request,
+	set_motor_direction_chan_parameter chan<- int,
+	set_lamp_chan_parameter chan<- message_structs.Set_lamp_message,
+	local_elevator_state_changes_chan_parameter chan<- message_structs.Elevator_state,
+	floor_changes_chan_parameter <-chan int,
+	requests_to_execute_chan <-chan message_structs.Request) {
 
 	executed_requests_chan = executed_requests_chan_parameter
 	floor_changes_chan = floor_changes_chan_parameter
@@ -83,9 +82,10 @@ func Execute_requests(
 			}
 
 		case current_floor := <-floor_changes_chan:
-			if current_floor == -1{
-				if current_elevator_state_type == STATE_TYPE_IDLE{
-					fmt.Println("ELEVATOR IN UNDEFINED STATE: IDLE IN SHAFT. SHOLD RESTART")
+			if current_floor == -1 {
+				if current_elevator_state_type == STATE_TYPE_IDLE {
+					fmt.Println("ILLEGAL STATE: IDLE IN SHAFT. Exiting...")
+					os.Exit(0) //Lets backup take over (effectively a program restart)
 				}
 				break
 			}
@@ -119,8 +119,9 @@ func elevator_initialize_position() {
 		break
 	}
 
-	fmt.Println("ELEVATOR DID NOT FIND ANY FLOORS DURING EXECUTOR INIT. SHOULD RESTART.")
+	fmt.Println("ELEVATOR DID NOT FIND ANY FLOORS DURING EXECUTOR INIT. Exiting...")
 	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
+	os.Exit(0) //Lets backup take over (effectively a program restart)
 }
 
 // Should only be called when at a floor and finished in state type STATE_TYPE_DOORS_OPEN

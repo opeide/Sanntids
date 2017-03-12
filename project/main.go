@@ -9,16 +9,60 @@ import (
 	"./request_distributor"
 	"./request_executor"
 	"./request_watchdog"
+	"flag"
 	"fmt"
-	//"os"
+	"os"
+	"os/exec"
+	"strconv"
+	"syscall"
+	"time"
 )
 
 const (
 	peer_update_port     = 20110
 	network_request_port = 20111
+
+	check_maker_alive_period = 1 // Seconds
 )
 
 func main() {
+	var made_by_pid string
+	flag.StringVar(&made_by_pid, "made_by_pid", "", "pid of process that started this process")
+	flag.Parse()
+
+	fmt.Println("I was made by process id:", made_by_pid)
+
+	if made_by_pid != "" {
+		made_by_pid, _ := strconv.Atoi(made_by_pid)
+		maker_alive := true
+		for maker_alive {
+			select {
+			case <-time.After(time.Second * check_maker_alive_period):
+				process, err := os.FindProcess(made_by_pid)
+				if err != nil {
+					fmt.Println("Failed to find process id: ", made_by_pid)
+					maker_alive = false
+				} else {
+					err := process.Signal(syscall.Signal(0))
+					fmt.Println("process.Signal on pid", made_by_pid, "returned:", err)
+					if err != nil {
+						maker_alive = false
+					}
+				}
+			}
+		}
+	}
+
+	// Be the elevator
+	pid := os.Getpid()
+	fmt.Println("My process id:", pid)
+	err := exec.Command("gnome-terminal", "-x", "sh", "-c", "go run main.go -made_by_pid="+strconv.Itoa(pid)).Run()
+	if err != nil {
+		fmt.Println("Could not make a backup. ")
+		fmt.Println(err)
+		//todo: restart computer [in design]
+	}
+
 	button_request_chan := make(chan message_structs.Request, 1) // 50 because ???????????????????????????
 	floor_changes_chan := make(chan int, 1)
 	set_motor_direction_chan := make(chan int, 1)
@@ -32,14 +76,14 @@ func main() {
 
 	requests_to_execute_chan := make(chan message_structs.Request, 1)
 	executed_requests_chan := make(chan message_structs.Request, 1)
-	local_elevator_state_changes_chan := make(chan message_structs.Elevator_state, 1) // Burde være 3 eller noe slikt? Ettersom det kommer 3 på rad av og til. 
+	local_elevator_state_changes_chan := make(chan message_structs.Elevator_state, 1) // Burde være 3 eller noe slikt? Ettersom det kommer 3 på rad av og til.
 
 	go request_executor.Execute_requests(
 		executed_requests_chan,
 		set_motor_direction_chan,
-		set_lamp_chan, 
-		local_elevator_state_changes_chan, 
-		floor_changes_chan, 
+		set_lamp_chan,
+		local_elevator_state_changes_chan,
+		floor_changes_chan,
 		requests_to_execute_chan)
 
 	// Network module
@@ -49,8 +93,8 @@ func main() {
 		fmt.Println("DISCONNECTED FROM NETWORK AT STARTUP. EXITING")
 		return
 	}
-	id := fmt.Sprintf("peer-%s", localIP)//fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
-	fmt.Println("MY ID: ",id)
+	id := fmt.Sprintf("peer-%s", localIP) //fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
+	fmt.Println("MY ID: ", id)
 	peer_update_chan := make(chan peers.PeerUpdate, 1)
 	peer_tx_enable_chan := make(chan bool, 1) // Currently not in use, but needed to run the peers.Receiver
 	go peers.Transmitter(peer_update_port, id, peer_tx_enable_chan)
