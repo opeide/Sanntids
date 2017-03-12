@@ -64,6 +64,7 @@ func Distribute_requests(
 			if peer_update.New != "" {
 				fmt.Println("Distributor: New Peer: ", peer_update.New)
 				if _, ok := all_command_requests[peer_update.New]; !ok {
+					fmt.Println("creating new request list for brand new peer")
 					all_upward_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS)
 					all_downward_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS)
 					all_command_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS)
@@ -87,9 +88,11 @@ func Distribute_requests(
 
 			if len(peer_update.Lost) != 0 {
 				for _, lost_elevator_id := range peer_update.Lost {
+					fmt.Println("Lost elevator: ", lost_elevator_id)
 					if lost_elevator_id != local_id {
 						fmt.Println("Lost non-local elevator: ", lost_elevator_id)
-						//Inherit requests and delete elevator
+						//delete elevator and Inherit requests
+						delete(all_elevator_states, lost_elevator_id)
 						for _, requests_list_by_id := range []map[string][]message_structs.Request{all_upward_requests, all_downward_requests, all_command_requests} {
 							for responsible_id, request_list_by_floor := range requests_list_by_id {
 								if responsible_id == lost_elevator_id {
