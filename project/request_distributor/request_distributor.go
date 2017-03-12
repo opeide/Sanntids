@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"time"
 )
 
 var all_elevator_states = make(map[string]message_structs.Elevator_state)
@@ -23,6 +24,11 @@ var network_request_tx_chan chan<- message_structs.Request
 var local_elevator_state_changes_tx_chan chan<- message_structs.Elevator_state
 var requests_to_execute_chan chan<- message_structs.Request
 var set_lamp_chan chan<- message_structs.Set_lamp_message
+
+const (
+	num_network_transmit_repeats = 3
+	network_transmit_wait_time   = 5 // Milliseconds
+)
 
 // [solved] Remember to do caborders when we get back after losing power!!!!!!!!!!!!!!! solved: get them from network
 // If we lose network, will we be filling up the network channel and eventually block???????
@@ -49,9 +55,7 @@ func Distribute_requests(
 
 	select {
 	case local_elevator_state := <-local_elevator_state_changes_chan:
-		local_elevator_state.Elevator_id = local_id
-		all_elevator_states[local_id] = local_elevator_state
-		local_elevator_state_changes_tx_chan <- local_elevator_state
+		update_own_state_and_send_to_network(local_elevator_state)
 
 		all_upward_requests[local_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
 		all_downward_requests[local_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
@@ -71,7 +75,7 @@ func Distribute_requests(
 				}
 
 				if peer_update.New != local_id {
-					local_elevator_state_changes_tx_chan <- all_elevator_states[local_id]
+					update_own_state_and_send_to_network(all_elevator_states[local_id])
 				}
 
 				// new peer, send all stored requests on network
@@ -118,9 +122,7 @@ func Distribute_requests(
 			}
 
 		case local_elevator_state := <-local_elevator_state_changes_chan:
-			local_elevator_state.Elevator_id = local_id
-			all_elevator_states[local_id] = local_elevator_state
-			local_elevator_state_changes_tx_chan <- local_elevator_state
+			update_own_state_and_send_to_network(local_elevator_state)
 
 		case button_request := <-button_request_chan:
 			button_request.Responsible_elevator = decide_responsible_elevator(button_request)
@@ -213,7 +215,21 @@ func distribute_request(request message_structs.Request) {
 		requests_to_execute_chan <- request
 	}
 	request.Message_origin_id = local_id
-	network_request_tx_chan <- request
+
+	for sendt_n_times := 1; sendt_n_times <= num_network_transmit_repeats; sendt_n_times++ {
+		network_request_tx_chan <- request
+		<-time.After(time.Millisecond * network_transmit_wait_time)
+	}
+}
+
+func update_own_state_and_send_to_network(elevator_state message_structs.Elevator_state) {
+	elevator_state.Elevator_id = local_id
+	all_elevator_states[local_id] = elevator_state
+
+	for sendt_n_times := 1; sendt_n_times <= num_network_transmit_repeats; sendt_n_times++ {
+		local_elevator_state_changes_tx_chan <- elevator_state
+		<-time.After(time.Millisecond * network_transmit_wait_time)
+	}
 }
 
 func register_finished_request(request message_structs.Request) {
