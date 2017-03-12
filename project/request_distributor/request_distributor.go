@@ -152,6 +152,7 @@ func Distribute_requests(
 
 func register_request(request message_structs.Request) {
 	if _, ok := all_command_requests[request.Responsible_elevator]; !ok {
+		fmt.Println("saved register!")
 		all_upward_requests[request.Responsible_elevator] = make([]message_structs.Request, hardware_interface.N_FLOORS)
 		all_downward_requests[request.Responsible_elevator] = make([]message_structs.Request, hardware_interface.N_FLOORS)
 		all_command_requests[request.Responsible_elevator] = make([]message_structs.Request, hardware_interface.N_FLOORS)
@@ -254,6 +255,7 @@ func estimate_time_for_elevator_to_complete_request(elevator_state message_struc
 	elevator_id := elevator_state.Elevator_id
 
 	if _, ok := all_command_requests[elevator_id]; !ok {
+		fmt.Println("Saved estimate!")
 		all_upward_requests[elevator_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
 		all_downward_requests[elevator_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
 		all_command_requests[elevator_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
