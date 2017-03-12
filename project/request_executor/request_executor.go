@@ -176,6 +176,7 @@ func set_state(new_state_type int, new_last_visited_floor int, new_last_non_stop
 		select {
 		case <-time.After(time.Millisecond * 100): // Place close to the middel of the sensor
 		}
+		fmt.Println("Setting state to idle")
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: new_last_visited_floor}
 
@@ -209,6 +210,8 @@ func set_state(new_state_type int, new_last_visited_floor int, new_last_non_stop
 	local_elevator_state_changes_chan <- message_structs.Elevator_state{
 		Last_visited_floor:            last_visited_floor,
 		Last_non_stop_motor_direction: last_non_stop_motor_direction}
+
+	fmt.Println("finished setting state")
 }
 
 // Includes if there is a COMMAND request there

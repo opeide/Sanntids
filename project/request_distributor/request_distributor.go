@@ -47,7 +47,16 @@ func Distribute_requests(
 	requests_to_execute_chan = requests_to_execute_chan_parameter
 	set_lamp_chan = set_lamp_chan_parameter
 
-	all_elevator_states[local_id] = message_structs.Elevator_state{Elevator_id: local_id, Last_non_stop_motor_direction: hardware_interface.MOTOR_DIRECTION_DOWN}
+	select {
+	case local_elevator_state := <-local_elevator_state_changes_chan:
+		local_elevator_state.Elevator_id = local_id
+		all_elevator_states[local_id] = local_elevator_state
+		local_elevator_state_changes_tx_chan <- local_elevator_state
+
+		all_upward_requests[local_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+		all_downward_requests[local_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+		all_command_requests[local_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+	}
 
 	for {
 		select {
@@ -105,6 +114,11 @@ func Distribute_requests(
 				}
 			}
 
+		case local_elevator_state := <-local_elevator_state_changes_chan:
+			local_elevator_state.Elevator_id = local_id
+			all_elevator_states[local_id] = local_elevator_state
+			local_elevator_state_changes_tx_chan <- local_elevator_state
+
 		case button_request := <-button_request_chan:
 			button_request.Responsible_elevator = decide_responsible_elevator(button_request)
 
@@ -133,11 +147,6 @@ func Distribute_requests(
 					distribute_request(non_local_request)
 				}
 			}
-
-		case local_elevator_state := <-local_elevator_state_changes_chan:
-			local_elevator_state.Elevator_id = local_id
-			all_elevator_states[local_id] = local_elevator_state
-			local_elevator_state_changes_tx_chan <- local_elevator_state
 
 		case non_local_elevator_state := <-non_local_elevator_state_changes_rx_chan:
 			if non_local_elevator_state.Elevator_id == local_id {
