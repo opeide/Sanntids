@@ -8,6 +8,7 @@ import (
 	"../hardware_interface"
 	"../message_structs"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -18,9 +19,11 @@ var stop_channels = make(map[string][]chan int)
 var active_timers = make(map[string][]bool)
 
 var timed_out_requests_chan chan<- message_structs.Request
+var local_id string
 
-func Init(timed_out_requests_chan_parameter chan<- message_structs.Request) {
+func Init(local_id_parameter string, timed_out_requests_chan_parameter chan<- message_structs.Request) {
 	timed_out_requests_chan = timed_out_requests_chan_parameter
+	local_id = local_id_parameter
 }
 
 func Timer_start(request message_structs.Request) {
@@ -52,6 +55,9 @@ func timer_thread(request message_structs.Request) {
 		active_timers[request.Responsible_elevator][request.Floor] = false
 	case <-time.After(time.Second * timeout_seconds):
 		fmt.Println("Request timed out: ", request)
+		if request.Responsible_elevator == local_id {
+			os.Exit(0) //Lets backup take over (effectively a program restart)
+		}
 		timed_out_requests_chan <- request
 		active_timers[request.Responsible_elevator][request.Floor] = false
 	}

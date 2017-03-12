@@ -111,7 +111,7 @@ func main() {
 	go bcast.Receiver(network_request_port, network_request_rx_chan, non_local_elevator_state_changes_rx_chan)
 
 	timed_out_requests_chan := make(chan message_structs.Request, 1)
-	request_watchdog.Init(timed_out_requests_chan)
+	request_watchdog.Init(id, timed_out_requests_chan)
 
 	go request_distributor.Distribute_requests(
 		id,
