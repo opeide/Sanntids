@@ -53,7 +53,9 @@ func Execute_requests(
 	set_lamp_chan = set_lamp_chan_parameter
 	local_elevator_state_changes_chan = local_elevator_state_changes_chan_parameter
 
+	fmt.Println("Initializing executor...")
 	elevator_initialize_position()
+	fmt.Println("Initialization finished")
 
 	for {
 		select {
