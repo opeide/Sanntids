@@ -151,13 +151,13 @@ func Distribute_requests(
 }
 
 func register_request(request message_structs.Request) {
-	if _, ok := all_upward_requests[peer_update.New]; !ok {
+	if _, ok := all_upward_requests[request.Responsible_elevator]; !ok {
 		fmt.Println("ID not in all upward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	}
-	if _, ok := all_downward_requests[peer_update.New]; !ok {
+	if _, ok := all_downward_requests[request.Responsible_elevator]; !ok {
 		fmt.Println("ID not in all downward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	}
-	if _, ok := all_command_requests[peer_update.New]; !ok {
+	if _, ok := all_command_requests[request.Responsible_elevator]; !ok {
 		fmt.Println("ID not in all command requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	}
 	request_watchdog.Timer_start(request)
@@ -290,13 +290,13 @@ func estimate_time_for_elevator_to_complete_request(elevator_state message_struc
 		starting_floor = last_stop_floor
 	}
 
-	if _, ok := all_upward_requests[peer_update.New]; !ok {
+	if _, ok := all_upward_requests[request.Responsible_elevator]; !ok {
 		fmt.Println("est: ID not in all upward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	}
-	if _, ok := all_downward_requests[peer_update.New]; !ok {
+	if _, ok := all_downward_requests[request.Responsible_elevator]; !ok {
 		fmt.Println("est: ID not in all downward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	}
-	if _, ok := all_command_requests[peer_update.New]; !ok {
+	if _, ok := all_command_requests[request.Responsible_elevator]; !ok {
 		fmt.Println("est: ID not in all command requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	}
 
