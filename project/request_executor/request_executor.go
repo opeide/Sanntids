@@ -171,6 +171,9 @@ func set_state(new_state_type int, new_last_visited_floor int, new_last_non_stop
 
 	switch new_state_type {
 	case STATE_TYPE_IDLE:
+		select {
+		case <-time.After(time.Millisecond * 100): // Place close to the middel of the sensor
+		}
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: new_last_visited_floor}
 

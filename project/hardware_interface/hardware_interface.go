@@ -19,11 +19,11 @@ var floor_sensor_state int = -1
 func Read_and_write_to_hardware(
 	button_request_chan chan<- message_structs.Request,
 	floor_changes_chan chan<- int,
-	set_motor_direction_chan <-chan int, 
-	set_lamp_chan <- chan message_structs.Set_lamp_message) {
+	set_motor_direction_chan <-chan int,
+	set_lamp_chan <-chan message_structs.Set_lamp_message) {
 
 	elev_init()
-	floor_sensor_reading := elev_get_floor_sensor_signal()
+	floor_sensor_reading := floor_sensor_multiple_read()
 	floor_sensor_state = floor_sensor_reading
 	floor_changes_chan <- floor_sensor_reading
 
@@ -54,10 +54,26 @@ func button_request_acquirer(button_request_chan chan<- message_structs.Request)
 
 func floor_sensor(floor_changes_chan chan<- int) {
 	for {
-		floor_sensor_reading := elev_get_floor_sensor_signal()
+		floor_sensor_reading := floor_sensor_multiple_read()
 		if floor_sensor_reading != floor_sensor_state {
 			floor_sensor_state = floor_sensor_reading
 			floor_changes_chan <- floor_sensor_state
+		}
+	}
+}
+func floor_sensor_multiple_read() int {
+	last_read := elev_get_floor_sensor_signal()
+	for {
+		floor_sensor_reading1 := elev_get_floor_sensor_signal()
+		floor_sensor_reading2 := elev_get_floor_sensor_signal()
+		floor_sensor_reading3 := elev_get_floor_sensor_signal()
+		if floor_sensor_reading1 == last_read &&
+			floor_sensor_reading2 == last_read &&
+			floor_sensor_reading3 == last_read {
+
+			return last_read
+		} else {
+			last_read = floor_sensor_reading3
 		}
 	}
 }
@@ -71,11 +87,11 @@ func motor_direction_setter(set_motor_direction_chan <-chan int) {
 	}
 }
 
-func lamp_setter(set_lamp_chan <-chan message_structs.Set_lamp_message){
-	for{
-		select{
-		case set_lamp_message := <- set_lamp_chan:
-			switch(set_lamp_message.Lamp_type){
+func lamp_setter(set_lamp_chan <-chan message_structs.Set_lamp_message) {
+	for {
+		select {
+		case set_lamp_message := <-set_lamp_chan:
+			switch set_lamp_message.Lamp_type {
 			case LAMP_TYPE_UP:
 				elev_set_button_lamp(BUTTON_TYPE_CALL_UP, set_lamp_message.Floor, set_lamp_message.Value)
 				break
