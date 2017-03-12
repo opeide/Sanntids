@@ -52,6 +52,9 @@ func Distribute_requests(
 		case button_request := <-button_request_chan:
 			button_request.Responsible_elevator = decide_responsible_elevator(button_request)
 
+			if button_request == zero_request { // TEMP TEST
+				fmt.Println("Local request, trying to register zero request. ")
+			}
 			register_request(button_request)
 			distribute_request(button_request)
 
@@ -66,6 +69,9 @@ func Distribute_requests(
 			if non_local_request.Is_completed {
 				register_finished_request(non_local_request)
 			} else {
+				if non_local_request == zero_request { // TEMP TEST
+					fmt.Println("Non_local_request, trying to register zero request. ")
+				}
 				register_request(non_local_request)
 				if non_local_request.Responsible_elevator == local_id {
 					distribute_request(non_local_request)
@@ -84,6 +90,9 @@ func Distribute_requests(
 			all_elevator_states[non_local_elevator_state.Elevator_id] = non_local_elevator_state
 
 		case timed_out_request := <-timed_out_requests_chan:
+			if timed_out_request == zero_request { // TEMP TEST
+				fmt.Println("Timed out request, trying to register zero request. ")
+			}
 			if timed_out_request.Responsible_elevator == local_id {
 				fmt.Println("Timed out on local request: ", timed_out_request)
 				register_request(timed_out_request)
@@ -135,6 +144,9 @@ func Distribute_requests(
 											if request.Request_type != hardware_interface.BUTTON_TYPE_COMMAND {
 												request.Responsible_elevator = local_id
 											}
+											if request == zero_request { // TEMP TEST
+												fmt.Println("Peer lost, trying to register zero request. ")
+											}
 											register_request(request)
 											distribute_request(request)
 										}
@@ -151,6 +163,9 @@ func Distribute_requests(
 }
 
 func register_request(request message_structs.Request) {
+	if request.Responsible_elevator == "" {
+		fmt.Println("Trying to register blank id! ERROR")
+	}
 	if _, ok := all_command_requests[request.Responsible_elevator]; !ok {
 		fmt.Println("saved register!")
 		all_upward_requests[request.Responsible_elevator] = make([]message_structs.Request, hardware_interface.N_FLOORS)
