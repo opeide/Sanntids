@@ -47,7 +47,7 @@ func Distribute_requests(
 	requests_to_execute_chan = requests_to_execute_chan_parameter
 	set_lamp_chan = set_lamp_chan_parameter
 
-	all_elevator_states[local_id] = message_structs.Elevator_state{Elevator_id: local_id}
+	all_elevator_states[local_id] = message_structs.Elevator_state{Elevator_id: local_id, Last_non_stop_motor_direction: hardware_interface.MOTOR_DIRECTION_DOWN}
 
 	for {
 		select {
