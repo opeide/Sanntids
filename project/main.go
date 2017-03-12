@@ -95,7 +95,7 @@ func main() {
 		return
 	}
 	id := fmt.Sprintf("peer-%s", localIP) //fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
-	fmt.Println("MY ID: ", id)
+
 	peer_update_chan := make(chan peers.PeerUpdate, 1)
 	peer_tx_enable_chan := make(chan bool, 1) // Currently not in use, but needed to run the peers.Receiver
 	go peers.Transmitter(peer_update_port, id, peer_tx_enable_chan)
