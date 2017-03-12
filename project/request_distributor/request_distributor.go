@@ -87,6 +87,9 @@ func Distribute_requests(
 			if non_local_elevator_state.Elevator_id == local_id {
 				break
 			}
+			if non_local_elevator_state.Elevator_id == "" { // TEMP TEST
+				fmt.Println("Got non local elevator state with no id")
+			}
 			all_elevator_states[non_local_elevator_state.Elevator_id] = non_local_elevator_state
 
 		case timed_out_request := <-timed_out_requests_chan:
