@@ -92,7 +92,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("DISCONNECTED FROM NETWORK AT STARTUP. EXITING")
-		return
+		os.Exit(0) //Lets backup take over (effectively a program restart)
 	}
 	id := fmt.Sprintf("peer-%s", localIP) //fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 
