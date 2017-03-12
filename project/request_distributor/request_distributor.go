@@ -51,6 +51,60 @@ func Distribute_requests(
 
 	for {
 		select {
+		case peer_update := <-peer_update_chan:
+			if peer_update.New != "" {
+				fmt.Println("Distributor: New Peer: ", peer_update.New)
+				if _, ok := all_command_requests[peer_update.New]; !ok {
+					all_upward_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+					all_downward_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+					all_command_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+				}
+
+				if peer_update.New != local_id {
+					local_elevator_state_changes_tx_chan <- all_elevator_states[local_id]
+				}
+
+				// new peer, send all stored requests on network
+				for _, requests_list_by_id := range []map[string][]message_structs.Request{all_upward_requests, all_downward_requests, all_command_requests} {
+					for _, request_list_by_floor := range requests_list_by_id {
+						for _, request := range request_list_by_floor {
+							if request != zero_request {
+								distribute_request(request)
+							}
+						}
+					}
+				}
+			}
+
+			if len(peer_update.Lost) != 0 {
+				for _, lost_elevator_id := range peer_update.Lost {
+					if lost_elevator_id != local_id {
+						fmt.Println("Lost non-local elevator: ", lost_elevator_id)
+						//Inherit requests and delete elevator
+						for _, requests_list_by_id := range []map[string][]message_structs.Request{all_upward_requests, all_downward_requests, all_command_requests} {
+							for responsible_id, request_list_by_floor := range requests_list_by_id {
+								if responsible_id == lost_elevator_id {
+									for _, request := range request_list_by_floor {
+										if request != zero_request {
+											delete_request_except_non_completed_command(request)
+											if request.Request_type != hardware_interface.BUTTON_TYPE_COMMAND {
+												request.Responsible_elevator = local_id
+											}
+											if request == zero_request { // TEMP TEST
+												fmt.Println("Peer lost, trying to register zero request. ")
+											}
+											register_request(request)
+											distribute_request(request)
+										}
+									}
+									break
+								}
+							}
+						}
+					}
+				}
+			}
+
 		case button_request := <-button_request_chan:
 			button_request.Responsible_elevator = decide_responsible_elevator(button_request)
 
@@ -109,60 +163,6 @@ func Distribute_requests(
 			timed_out_request.Responsible_elevator = local_id
 			register_request(timed_out_request)
 			distribute_request(timed_out_request)
-
-		case peer_update := <-peer_update_chan:
-			if peer_update.New != "" {
-				fmt.Println("Distributor: New Peer: ", peer_update.New)
-				if _, ok := all_command_requests[peer_update.New]; !ok {
-					all_upward_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS)
-					all_downward_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS)
-					all_command_requests[peer_update.New] = make([]message_structs.Request, hardware_interface.N_FLOORS)
-				}
-
-				if peer_update.New != local_id {
-					local_elevator_state_changes_tx_chan <- all_elevator_states[local_id]
-				}
-
-				// new peer, send all stored requests on network
-				for _, requests_list_by_id := range []map[string][]message_structs.Request{all_upward_requests, all_downward_requests, all_command_requests} {
-					for _, request_list_by_floor := range requests_list_by_id {
-						for _, request := range request_list_by_floor {
-							if request != zero_request {
-								distribute_request(request)
-							}
-						}
-					}
-				}
-			}
-
-			if len(peer_update.Lost) != 0 {
-				for _, lost_elevator_id := range peer_update.Lost {
-					if lost_elevator_id != local_id {
-						fmt.Println("Lost non-local elevator: ", lost_elevator_id)
-						//Inherit requests and delete elevator
-						for _, requests_list_by_id := range []map[string][]message_structs.Request{all_upward_requests, all_downward_requests, all_command_requests} {
-							for responsible_id, request_list_by_floor := range requests_list_by_id {
-								if responsible_id == lost_elevator_id {
-									for _, request := range request_list_by_floor {
-										if request != zero_request {
-											delete_request_except_non_completed_command(request)
-											if request.Request_type != hardware_interface.BUTTON_TYPE_COMMAND {
-												request.Responsible_elevator = local_id
-											}
-											if request == zero_request { // TEMP TEST
-												fmt.Println("Peer lost, trying to register zero request. ")
-											}
-											register_request(request)
-											distribute_request(request)
-										}
-									}
-									break
-								}
-							}
-						}
-					}
-				}
-			}
 		}
 	}
 }
