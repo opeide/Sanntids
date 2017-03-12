@@ -151,14 +151,10 @@ func Distribute_requests(
 }
 
 func register_request(request message_structs.Request) {
-	if _, ok := all_upward_requests[request.Responsible_elevator]; !ok {
-		fmt.Println("ID not in all upward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	}
-	if _, ok := all_downward_requests[request.Responsible_elevator]; !ok {
-		fmt.Println("ID not in all downward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	}
 	if _, ok := all_command_requests[request.Responsible_elevator]; !ok {
-		fmt.Println("ID not in all command requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+		all_upward_requests[request.Responsible_elevator] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+		all_downward_requests[request.Responsible_elevator] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+		all_command_requests[request.Responsible_elevator] = make([]message_structs.Request, hardware_interface.N_FLOORS)
 	}
 	request_watchdog.Timer_start(request)
 	switch request.Request_type {
@@ -257,6 +253,12 @@ func decide_responsible_elevator(request message_structs.Request) string {
 func estimate_time_for_elevator_to_complete_request(elevator_state message_structs.Elevator_state, request message_structs.Request) int {
 	elevator_id := elevator_state.Elevator_id
 
+	if _, ok := all_command_requests[elevator_id]; !ok {
+		all_upward_requests[elevator_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+		all_downward_requests[elevator_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+		all_command_requests[elevator_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
+	}
+
 	request_list_by_motor_direction := map[int]map[string][]message_structs.Request{hardware_interface.MOTOR_DIRECTION_DOWN: all_downward_requests, hardware_interface.MOTOR_DIRECTION_UP: all_upward_requests}
 	endfloor_in_motor_direction := map[int]int{hardware_interface.MOTOR_DIRECTION_DOWN: -1, hardware_interface.MOTOR_DIRECTION_UP: hardware_interface.N_FLOORS}
 
@@ -288,16 +290,6 @@ func estimate_time_for_elevator_to_complete_request(elevator_state message_struc
 			}
 		}
 		starting_floor = last_stop_floor
-	}
-
-	if _, ok := all_upward_requests[request.Responsible_elevator]; !ok {
-		fmt.Println("est: ID not in all upward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	}
-	if _, ok := all_downward_requests[request.Responsible_elevator]; !ok {
-		fmt.Println("est: ID not in all downward requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	}
-	if _, ok := all_command_requests[request.Responsible_elevator]; !ok {
-		fmt.Println("est: ID not in all command requests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	}
 
 	fmt.Println("SIMULATOR NEVER REACHED FLOOR! SHOULD NOT HAPPEN!")
