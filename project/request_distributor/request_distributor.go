@@ -47,6 +47,8 @@ func Distribute_requests(
 	requests_to_execute_chan = requests_to_execute_chan_parameter
 	set_lamp_chan = set_lamp_chan_parameter
 
+	all_elevator_states[local_id] = message_structs.Elevator_state{Elevator_id: local_id}
+
 	for {
 		select {
 		case button_request := <-button_request_chan:
