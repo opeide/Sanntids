@@ -22,10 +22,11 @@ const (
 	peer_update_port     = 20110
 	network_request_port = 20111
 
-	check_maker_alive_period = 1 // Seconds
+	check_maker_alive_period_ms = 50 // milli Seconds
 )
 
 func main() {
+
 	// Be a backup
 	var made_by_pid string
 	flag.StringVar(&made_by_pid, "made_by_pid", "", "pid of process that started this process")
@@ -36,7 +37,7 @@ func main() {
 		maker_alive := true
 		for maker_alive {
 			select {
-			case <-time.After(time.Second * check_maker_alive_period):
+			case <-time.After(time.Millisecond * check_maker_alive_period_ms):
 				process, err := os.FindProcess(made_by_pid)
 				if err != nil {
 					fmt.Println("Failed to find process id: ", made_by_pid)
@@ -52,7 +53,18 @@ func main() {
 		}
 	}
 
-	// Be the elevator
+	// be the elevator
+	// Init hardware to stop in case moving
+	button_request_chan := make(chan message_structs.Request, 1) // 50 because ???????????????????????????
+	floor_changes_chan := make(chan int, 1)
+	set_motor_direction_chan := make(chan int, 1)
+	set_lamp_chan := make(chan message_structs.Set_lamp_message, 1)
+
+	go hardware_interface.Read_and_write_to_hardware(
+		button_request_chan,
+		floor_changes_chan,
+		set_motor_direction_chan,
+		set_lamp_chan)
 
 	// Make the backup
 	pid := os.Getpid()
@@ -64,16 +76,7 @@ func main() {
 		//todo: restart computer [in design]
 	}
 
-	button_request_chan := make(chan message_structs.Request, 1) // 50 because ???????????????????????????
-	floor_changes_chan := make(chan int, 1)
-	set_motor_direction_chan := make(chan int, 1)
-	set_lamp_chan := make(chan message_structs.Set_lamp_message, 1)
-
-	go hardware_interface.Read_and_write_to_hardware(
-		button_request_chan,
-		floor_changes_chan,
-		set_motor_direction_chan,
-		set_lamp_chan)
+	//<-time.After(time.Second * 10) //todo: make const. let backup be generated before continuing
 
 	requests_to_execute_chan := make(chan message_structs.Request, 1)
 	executed_requests_chan := make(chan message_structs.Request, 1)

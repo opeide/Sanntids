@@ -26,6 +26,7 @@ func Read_and_write_to_hardware(
 	floor_sensor_reading := floor_sensor_multiple_read()
 	floor_sensor_state = floor_sensor_reading
 	floor_changes_chan <- floor_sensor_reading
+	elev_set_motor_direction(MOTOR_DIRECTION_STOP)
 
 	go button_request_acquirer(button_request_chan)
 	go floor_sensor(floor_changes_chan)

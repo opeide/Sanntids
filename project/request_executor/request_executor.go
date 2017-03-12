@@ -114,17 +114,19 @@ func elevator_initialize_position() {
 			set_state(STATE_TYPE_IDLE, current_floor, hardware_interface.MOTOR_DIRECTION_DOWN)
 			return
 		}
+	case <-time.After(time.Second * INITIALIZATION_TIMEOUT):
 	}
 
 	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_DOWN
+
 	select {
 	case current_floor := <-floor_changes_chan:
-		set_state(STATE_TYPE_IDLE, current_floor, hardware_interface.MOTOR_DIRECTION_DOWN)
-		return
+		if current_floor != -1 {
+			set_state(STATE_TYPE_IDLE, current_floor, hardware_interface.MOTOR_DIRECTION_DOWN)
+			return
+		}
 	case <-time.After(time.Second * INITIALIZATION_TIMEOUT):
-		break
 	}
-
 	fmt.Println("ELEVATOR DID NOT FIND ANY FLOORS DURING EXECUTOR INIT. Exiting...")
 	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 	os.Exit(0) //Lets backup take over (effectively a program restart)
