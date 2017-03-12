@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const timeout_seconds = 10
+const timeout_seconds = 40 //time to move up and down stopping everywhere
 
 //indexed by id and floor.
 var stop_channels = make(map[string][]chan int)

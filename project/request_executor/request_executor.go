@@ -3,6 +3,7 @@ package request_executor
 import (
 	"../hardware_interface"
 	"../message_structs"
+	"../motor_movement_watchdog"
 	"fmt"
 	"os"
 	"time"
@@ -89,9 +90,11 @@ func Execute_requests(
 				}
 				break
 			}
+
+			motor_movement_watchdog.Timer_stop()
+
 			set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: current_floor}
 			last_visited_floor = current_floor
-
 			set_next_correct_state_being_at(last_visited_floor, last_non_stop_motor_direction)
 
 		case <-door_just_closed_chan:
@@ -185,10 +188,12 @@ func set_state(new_state_type int, new_last_visited_floor int, new_last_non_stop
 	case STATE_TYPE_MOVING_DOWN:
 		new_last_non_stop_direction = hardware_interface.MOTOR_DIRECTION_DOWN
 		set_motor_direction_chan <- new_last_non_stop_direction
+		motor_movement_watchdog.Timer_start()
 
 	case STATE_TYPE_MOVING_UP:
 		new_last_non_stop_direction = hardware_interface.MOTOR_DIRECTION_UP
 		set_motor_direction_chan <- new_last_non_stop_direction
+		motor_movement_watchdog.Timer_start()
 	}
 
 	last_non_stop_motor_direction = new_last_non_stop_direction

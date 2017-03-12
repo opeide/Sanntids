@@ -26,12 +26,11 @@ const (
 )
 
 func main() {
+	// Be a backup
 	var made_by_pid string
 	flag.StringVar(&made_by_pid, "made_by_pid", "", "pid of process that started this process")
 	flag.Parse()
-
 	fmt.Println("I was made by process id:", made_by_pid)
-
 	if made_by_pid != "" {
 		made_by_pid, _ := strconv.Atoi(made_by_pid)
 		maker_alive := true
@@ -54,6 +53,8 @@ func main() {
 	}
 
 	// Be the elevator
+
+	// Make the backup
 	pid := os.Getpid()
 	fmt.Println("My process id:", pid)
 	err := exec.Command("gnome-terminal", "-x", "sh", "-c", "go run main.go -made_by_pid="+strconv.Itoa(pid)).Run()
