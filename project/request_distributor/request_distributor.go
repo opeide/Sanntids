@@ -109,8 +109,8 @@ func Distribute_requests(
 											if request == zero_request { // TEMP TEST
 												fmt.Println("Peer lost, trying to register zero request. ")
 											}
-											register_request(request)
 											distribute_request(request)
+											register_request(request)
 										}
 									}
 									break
@@ -130,8 +130,8 @@ func Distribute_requests(
 			if button_request == zero_request { // TEMP TEST
 				fmt.Println("Local request, trying to register zero request. ")
 			}
-			register_request(button_request)
 			distribute_request(button_request)
+			register_request(button_request)
 
 		case executed_request := <-executed_requests_chan:
 			distribute_request(executed_request)
@@ -147,10 +147,10 @@ func Distribute_requests(
 				if non_local_request == zero_request { // TEMP TEST
 					fmt.Println("Non_local_request, trying to register zero request. ")
 				}
-				register_request(non_local_request)
 				if non_local_request.Responsible_elevator == local_id {
 					distribute_request(non_local_request)
 				}
+				register_request(non_local_request)
 			}
 
 		case non_local_elevator_state := <-non_local_elevator_state_changes_rx_chan:
@@ -168,15 +168,15 @@ func Distribute_requests(
 			}
 			if timed_out_request.Responsible_elevator == local_id {
 				fmt.Println("Timed out on local request: ", timed_out_request)
-				register_request(timed_out_request)
 				distribute_request(timed_out_request)
+				register_request(timed_out_request)
 				os.Exit(0) //Lets backup take over (effectively a program restart)
 				break
 			}
 			fmt.Println("Timed out on non-local request: ", timed_out_request)
 			timed_out_request.Responsible_elevator = local_id
-			register_request(timed_out_request)
 			distribute_request(timed_out_request)
+			register_request(timed_out_request)
 		}
 	}
 }
