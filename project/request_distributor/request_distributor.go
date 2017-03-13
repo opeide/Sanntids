@@ -98,22 +98,17 @@ func Distribute_requests(
 						//delete elevator and Inherit requests
 						delete(all_elevator_states, lost_elevator_id)
 						for _, requests_list_by_id := range []map[string][]message_structs.Request{all_upward_requests, all_downward_requests, all_command_requests} {
-							for responsible_id, request_list_by_floor := range requests_list_by_id {
-								if responsible_id == lost_elevator_id {
-									for _, request := range request_list_by_floor {
-										if request != zero_request {
-											delete_request_except_non_completed_command(request)
-											if request.Request_type != hardware_interface.BUTTON_TYPE_COMMAND {
-												request.Responsible_elevator = local_id
-											}
-											if request == zero_request { // TEMP TEST
-												fmt.Println("Peer lost, trying to register zero request. ")
-											}
-											distribute_request(request)
-											register_request(request)
-										}
+							for _, request := range requests_list_by_id[lost_elevator_id] {
+								if request != zero_request {
+									delete_request_except_non_completed_command(request)
+									if request.Request_type != hardware_interface.BUTTON_TYPE_COMMAND {
+										request.Responsible_elevator = local_id
 									}
-									break
+									if request == zero_request { // TEMP TEST
+										fmt.Println("Peer lost, trying to register zero request. ")
+									}
+									distribute_request(request)
+									register_request(request)
 								}
 							}
 						}
