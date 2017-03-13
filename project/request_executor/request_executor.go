@@ -61,7 +61,8 @@ func Execute_requests(
 		select {
 		case current_floor := <-floor_changes_chan:
 			if current_floor == -1 {
-				if current_elevator_state_type == STATE_TYPE_IDLE {
+				if current_elevator_state_type != STATE_TYPE_MOVING_DOWN &&
+					current_elevator_state_type != STATE_TYPE_MOVING_UP {
 					fmt.Println("ILLEGAL STATE: IDLE IN SHAFT. Exiting...")
 					os.Exit(0) //Lets backup take over (effectively a program restart)
 				}
@@ -178,7 +179,7 @@ func set_state(new_state_type int, new_last_visited_floor int, new_last_non_stop
 		select {
 		case <-time.After(time.Millisecond * 100): // Place close to the middel of the sensor
 		}
-		fmt.Println("Setting state to idle")
+		//fmt.Println("Setting state to idle")
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: new_last_visited_floor}
 
@@ -213,7 +214,7 @@ func set_state(new_state_type int, new_last_visited_floor int, new_last_non_stop
 		Last_visited_floor:            last_visited_floor,
 		Last_non_stop_motor_direction: last_non_stop_motor_direction}
 
-	fmt.Println("finished setting state")
+	//fmt.Println("finished setting state")
 }
 
 // Includes if there is a COMMAND request there

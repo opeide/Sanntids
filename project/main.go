@@ -44,7 +44,7 @@ func main() {
 					maker_alive = false
 				} else {
 					err := process.Signal(syscall.Signal(0))
-					fmt.Println("process.Signal on pid", made_by_pid, "returned:", err)
+					//fmt.Println("process.Signal on pid", made_by_pid, "returned:", err)
 					if err != nil {
 						maker_alive = false
 					}

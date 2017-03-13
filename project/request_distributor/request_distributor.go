@@ -26,7 +26,7 @@ var requests_to_execute_chan chan<- message_structs.Request
 var set_lamp_chan chan<- message_structs.Set_lamp_message
 
 const (
-	num_network_transmit_repeats = 3
+	num_network_transmit_repeats = 6
 	network_transmit_wait_time   = 5 // Milliseconds
 )
 
@@ -55,7 +55,7 @@ func Distribute_requests(
 
 	select {
 	case local_elevator_state := <-local_elevator_state_changes_chan:
-		update_own_state_and_send_to_network(local_elevator_state)
+		update_own_state_varialbe_and_send_to_network(local_elevator_state)
 
 		all_upward_requests[local_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
 		all_downward_requests[local_id] = make([]message_structs.Request, hardware_interface.N_FLOORS)
@@ -75,7 +75,7 @@ func Distribute_requests(
 				}
 
 				if peer_update.New != local_id {
-					update_own_state_and_send_to_network(all_elevator_states[local_id])
+					update_own_state_varialbe_and_send_to_network(all_elevator_states[local_id])
 				}
 
 				// new peer, send all stored requests on network
@@ -122,7 +122,7 @@ func Distribute_requests(
 			}
 
 		case local_elevator_state := <-local_elevator_state_changes_chan:
-			update_own_state_and_send_to_network(local_elevator_state)
+			update_own_state_varialbe_and_send_to_network(local_elevator_state)
 
 		case button_request := <-button_request_chan:
 			button_request.Responsible_elevator = decide_responsible_elevator(button_request)
@@ -196,22 +196,25 @@ func register_request(request message_structs.Request) {
 	case hardware_interface.BUTTON_TYPE_CALL_UP:
 		if all_upward_requests[request.Responsible_elevator][request.Floor] == zero_request {
 			all_upward_requests[request.Responsible_elevator][request.Floor] = request
+			print_request_list()
 		}
 	case hardware_interface.BUTTON_TYPE_CALL_DOWN:
 		if all_downward_requests[request.Responsible_elevator][request.Floor] == zero_request {
 			all_downward_requests[request.Responsible_elevator][request.Floor] = request
+			print_request_list()
 		}
 	case hardware_interface.BUTTON_TYPE_COMMAND:
 		if all_command_requests[request.Responsible_elevator][request.Floor] == zero_request {
 			all_command_requests[request.Responsible_elevator][request.Floor] = request
+			print_request_list()
 		}
 	}
 	set_request_lights(request, 1)
-	print_request_list()
 }
 
 func distribute_request(request message_structs.Request) {
 	if request.Responsible_elevator == local_id && request.Is_completed == false {
+		fmt.Println("Sending request to executor. ")
 		requests_to_execute_chan <- request
 	}
 	request.Message_origin_id = local_id
@@ -222,7 +225,7 @@ func distribute_request(request message_structs.Request) {
 	}
 }
 
-func update_own_state_and_send_to_network(elevator_state message_structs.Elevator_state) {
+func update_own_state_varialbe_and_send_to_network(elevator_state message_structs.Elevator_state) {
 	elevator_state.Elevator_id = local_id
 	all_elevator_states[local_id] = elevator_state
 
