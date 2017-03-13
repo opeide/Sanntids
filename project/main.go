@@ -99,7 +99,7 @@ func main() {
 	}
 	id := fmt.Sprintf("peer-%s", localIP) //fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 
-	time.After(time.Millisecond * 500) //Let others detect this elevator was lost from network
+	<-time.After(time.Millisecond * 500) //Let others detect this elevator was lost from network
 
 	peer_update_chan := make(chan peers.PeerUpdate, 1)
 	peer_tx_enable_chan := make(chan bool, 1) // Currently not in use, but needed to run the peers.Receiver
