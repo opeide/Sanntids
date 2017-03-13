@@ -26,7 +26,7 @@ var requests_to_execute_chan chan<- message_structs.Request
 var set_lamp_chan chan<- message_structs.Set_lamp_message
 
 const (
-	num_network_transmit_repeats = 6
+	num_network_transmit_repeats = 10
 	network_transmit_wait_time   = 5 // Milliseconds
 )
 
