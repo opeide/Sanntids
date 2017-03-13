@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const timeout_seconds = 7
+const timeout_seconds = 5
 
 var stop_channel = make(chan int)
 var timer_has_stopped_chan = make(chan int)
