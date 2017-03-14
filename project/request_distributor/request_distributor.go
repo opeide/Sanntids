@@ -100,8 +100,8 @@ func Distribute_requests(
 						for _, requests_list_by_id := range []map[string][]message_structs.Request{all_upward_requests, all_downward_requests, all_command_requests} {
 							for _, request := range requests_list_by_id[lost_elevator_id] {
 								if request != zero_request {
-									delete_request_except_non_completed_command(request)
 									if request.Request_type != hardware_interface.BUTTON_TYPE_COMMAND {
+										delete_single_request(request)
 										request.Responsible_elevator = local_id
 									}
 									if request == zero_request { // TEMP TEST
@@ -240,6 +240,18 @@ func delete_request_except_non_completed_command(request message_structs.Request
 	all_upward_requests[request.Responsible_elevator][request.Floor] = zero_request
 	all_downward_requests[request.Responsible_elevator][request.Floor] = zero_request
 	if request.Is_completed {
+		all_command_requests[request.Responsible_elevator][request.Floor] = zero_request
+	}
+	request_watchdog.Timer_stop(request)
+}
+
+func delete_single_request(request message_structs.Request) {
+	switch request.Request_type {
+	case hardware_interface.BUTTON_TYPE_CALL_DOWN:
+		all_downward_requests[request.Responsible_elevator][request.Floor] = zero_request
+	case hardware_interface.BUTTON_TYPE_CALL_UP:
+		all_upward_requests[request.Responsible_elevator][request.Floor] = zero_request
+	case hardware_interface.BUTTON_TYPE_COMMAND:
 		all_command_requests[request.Responsible_elevator][request.Floor] = zero_request
 	}
 	request_watchdog.Timer_stop(request)

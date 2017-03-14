@@ -9,5 +9,5 @@ TODO
 + Test kode på 3 heiser. Heftig testing. 
 + Test packet lost (done med 2)
 + Lag modul for request store (som som har med request store i distributor)
-
++ trekk ut ulike ledninger på motorkontrollboksen
 
