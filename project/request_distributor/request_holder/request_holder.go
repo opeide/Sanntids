@@ -59,8 +59,10 @@ func Delete_single_request(request message_structs.Request) {
 }
 
 func Delete_floor_requests_not_uncompleted_command(request message_structs.Request) {
-	all_upward_requests[request.Responsible_elevator][request.Floor] = zero_request
-	all_downward_requests[request.Responsible_elevator][request.Floor] = zero_request
+	for _, elevator_id := all_command_requests{
+		all_upward_requests[elevator_id][request.Floor] = zero_request
+		all_downward_requests[elevator_id][request.Floor] = zero_request
+	}
 	if request.Is_completed {
 		all_command_requests[request.Responsible_elevator][request.Floor] = zero_request
 	}
