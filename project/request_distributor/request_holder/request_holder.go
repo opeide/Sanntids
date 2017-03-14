@@ -115,7 +115,7 @@ func Get_requests_of_type(request_type int) map[string][]message_structs.Request
 	case hardware_interface.BUTTON_TYPE_CALL_DOWN:
 		return all_downward_requests
 	case hardware_interface.BUTTON_TYPE_COMMAND:
-		return all_downward_requests
+		return all_command_requests
 	}
 	return make(map[string][]message_structs.Request)
 }
