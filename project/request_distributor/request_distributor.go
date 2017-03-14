@@ -84,13 +84,13 @@ func Distribute_requests(
 
 						for _, request := range request_holder.Get_all_requests_for_id(lost_elevator_id) {
 							if request != zero_request {
+								request_watchdog.Timer_stop(request)
 								if request.Request_type != hardware_interface.BUTTON_TYPE_COMMAND {
 									request_holder.Delete_single_request(request) //in holder
-									request_watchdog.Timer_stop(request)
 									request.Responsible_elevator = local_id
+									distribute_request(request)
+									register_request(request)
 								}
-								distribute_request(request)
-								register_request(request)
 							}
 						}
 					}
