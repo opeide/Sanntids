@@ -27,8 +27,6 @@ const (
 	network_transmit_wait_time   = 5 // Milliseconds
 )
 
-// If we lose network, will we be filling up the network channel and eventually block???????
-
 func Distribute_requests(
 	local_id_parameter string,
 	network_request_tx_chan_parameter chan<- message_structs.Request,
@@ -79,7 +77,6 @@ func Distribute_requests(
 				for _, lost_elevator_id := range peer_update.Lost {
 					fmt.Println("Lost elevator: ", lost_elevator_id)
 					if lost_elevator_id != local_id {
-						fmt.Println("Lost non-local elevator: ", lost_elevator_id)
 						delete(all_elevator_states, lost_elevator_id)
 
 						for _, request := range request_holder.Get_all_requests_for_id(lost_elevator_id) {
@@ -149,14 +146,12 @@ func register_request(request message_structs.Request) {
 	request_watchdog.Timer_start(request)
 	request_holder.Hold_request(request)
 	set_request_lights(request, 1)
-	request_holder.Print_requests(all_elevator_states)
 }
 
 func register_finished_request(request message_structs.Request) {
 	set_request_lights(request, 0)
 	request_holder.Delete_floor_requests_not_uncompleted_command(request)
 	request_watchdog.Timer_stop(request)
-	request_holder.Print_requests(all_elevator_states)
 }
 
 func distribute_request(request message_structs.Request) {
@@ -229,7 +224,6 @@ func decide_responsible_elevator(request message_structs.Request) string {
 			fastest_elevator_id = elevator_id
 		}
 	}
-	fmt.Println(fastest_elevator_id, " would solve request fastest: ", fastest_time, request)
 	return fastest_elevator_id
 }
 
@@ -271,9 +265,9 @@ func estimate_time_for_elevator_to_complete_request(elevator_state message_struc
 		starting_floor = last_stop_floor
 	}
 
-	fmt.Println("SIMULATOR NEVER REACHED FLOOR! SHOULD NOT HAPPEN!")
-	os.Exit(0) //Lets backup take over (effectively a program restart)
-	return total_time
+	//simulation never found the request
+	long_time := 999
+	return long_time
 }
 
 func abs(num int) int {

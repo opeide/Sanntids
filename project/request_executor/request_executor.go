@@ -37,8 +37,6 @@ var set_motor_direction_chan chan<- int
 var local_elevator_state_changes_chan chan<- message_structs.Elevator_state
 var floor_changes_chan <-chan int
 
-//TODO: make a timer that measures the time in shaft. if more than a specified amount of time passes, something is [wrong]!
-
 func Execute_requests(
 	executed_requests_chan_parameter chan<- message_structs.Request,
 	set_motor_direction_chan_parameter chan<- int,
@@ -63,7 +61,7 @@ func Execute_requests(
 			if current_floor == -1 {
 				if current_elevator_state_type != STATE_TYPE_MOVING_DOWN &&
 					current_elevator_state_type != STATE_TYPE_MOVING_UP {
-					fmt.Println("ILLEGAL STATE: IDLE IN SHAFT. Exiting...")
+					fmt.Println("Illegal state: IDLE in shaft. Restarting...")
 					os.Exit(0) //Lets backup take over (effectively a program restart)
 				}
 				break
@@ -128,23 +126,12 @@ func elevator_initialize_position() {
 		}
 	case <-time.After(time.Second * INITIALIZATION_TIMEOUT):
 	}
-	fmt.Println("ELEVATOR DID NOT FIND ANY FLOORS DURING EXECUTOR INIT. Exiting...")
+	fmt.Println("No floors discovered during init. Restarting...")
 	set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 	os.Exit(0) //Lets backup take over (effectively a program restart)
 }
 
-// Should only be called when at a floor and finished in state type STATE_TYPE_DOORS_OPEN
 func set_next_correct_state_being_at(current_floor int, current_direction int) {
-	// Should we have this test?
-	/*if current_floor == -1 {
-		switch current_direction {
-		case hardware_interface.MOTOR_DIRECTION_DOWN:
-			return STATE_TYPE_MOVING_DOWN
-		case hardware_interface.MOTOR_DIRECTION_UP:
-			return STATE_TYPE_MOVING_UP
-		}
-	}*/
-
 	if is_request_at(current_floor, current_direction) {
 		set_state(STATE_TYPE_DOORS_OPEN, current_floor, current_direction)
 		return
@@ -170,16 +157,14 @@ func set_next_correct_state_being_at(current_floor int, current_direction int) {
 	set_state(STATE_TYPE_IDLE, current_floor, current_direction)
 }
 
-// Should not be called while not finished in state type DOORS_OPEN
 func set_state(new_state_type int, new_last_visited_floor int, new_last_non_stop_direction int) {
 	set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_DOOR_OPEN, Value: 0}
 
 	switch new_state_type {
 	case STATE_TYPE_IDLE:
 		select {
-		case <-time.After(time.Millisecond * 100): // Place close to the middel of the sensor
+		case <-time.After(time.Millisecond * 100): // Lets elevator move closer to the middle of the floor sensor
 		}
-		//fmt.Println("Setting state to idle")
 		set_motor_direction_chan <- hardware_interface.MOTOR_DIRECTION_STOP
 		set_lamp_chan <- message_structs.Set_lamp_message{Lamp_type: hardware_interface.LAMP_TYPE_FLOOR_INDICATOR, Floor: new_last_visited_floor}
 
@@ -213,11 +198,8 @@ func set_state(new_state_type int, new_last_visited_floor int, new_last_non_stop
 	local_elevator_state_changes_chan <- message_structs.Elevator_state{
 		Last_visited_floor:            last_visited_floor,
 		Last_non_stop_motor_direction: last_non_stop_motor_direction}
-
-	//fmt.Println("finished setting state")
 }
 
-// Includes if there is a COMMAND request there
 func is_request_at(floor int, motor_direction int) bool {
 	if requests_command[floor] != zero_request {
 		return true

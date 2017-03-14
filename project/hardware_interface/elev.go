@@ -18,12 +18,8 @@ const (
 	BUTTON_TYPE_CALL_UP   = int(C.int(C.elev_button_type_t(C.BUTTON_CALL_UP)))
 	BUTTON_TYPE_CALL_DOWN = int(C.int(C.elev_button_type_t(C.BUTTON_CALL_DOWN)))
 	BUTTON_TYPE_COMMAND   = int(C.int(C.elev_button_type_t(C.BUTTON_COMMAND)))
-
-	//ET_Comedi     = int(C.int(C.elev_type(C.ET_Comedi)))
-	//ET_Simulation = int(C.int(C.elev_type(C.ET_Simulation)))
 )
 
-//func elev_init(e int) { C.elev_init(C.elev_type(e)) }
 func elev_init() { C.elev_init() }
 
 func elev_set_motor_direction(motor_direction int) {

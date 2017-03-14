@@ -27,7 +27,7 @@ const (
 
 func main() {
 
-	// Be a backup
+	// Be the backup process
 	var made_by_pid string
 	flag.StringVar(&made_by_pid, "made_by_pid", "", "pid of process that started this process")
 	flag.Parse()
@@ -44,7 +44,6 @@ func main() {
 					maker_alive = false
 				} else {
 					err := process.Signal(syscall.Signal(0))
-					//fmt.Println("process.Signal on pid", made_by_pid, "returned:", err)
 					if err != nil {
 						maker_alive = false
 					}
@@ -53,9 +52,9 @@ func main() {
 		}
 	}
 
-	// be the elevator
+	// Become the primary process
 	// Init hardware to stop in case moving
-	button_request_chan := make(chan message_structs.Request, 1) // 50 because ???????????????????????????
+	button_request_chan := make(chan message_structs.Request, 1)
 	floor_changes_chan := make(chan int, 1)
 	set_motor_direction_chan := make(chan int, 1)
 	set_lamp_chan := make(chan message_structs.Set_lamp_message, 1)
@@ -73,14 +72,12 @@ func main() {
 	if err != nil {
 		fmt.Println("Could not make a backup. ")
 		fmt.Println(err)
-		//todo: restart computer [in design]
+		os.Exit(0)
 	}
-
-	//<-time.After(time.Second * 10) //todo: make const. let backup be generated before continuing
 
 	requests_to_execute_chan := make(chan message_structs.Request, 1)
 	executed_requests_chan := make(chan message_structs.Request, 1)
-	local_elevator_state_changes_chan := make(chan message_structs.Elevator_state, 1) // Burde være 3 eller noe slikt? Ettersom det kommer 3 på rad av og til.
+	local_elevator_state_changes_chan := make(chan message_structs.Elevator_state, 1)
 
 	go request_executor.Execute_requests(
 		executed_requests_chan,
@@ -94,10 +91,10 @@ func main() {
 	localIP, err := localip.LocalIP()
 	if err != nil {
 		fmt.Println(err)
-		fmt.Println("DISCONNECTED FROM NETWORK AT STARTUP. EXITING")
+		fmt.Println("Disconnected from network at startup. Restarting...")
 		os.Exit(0) //Lets backup take over (effectively a program restart)
 	}
-	id := fmt.Sprintf("peer-%s", localIP) //fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
+	id := fmt.Sprintf("peer-%s", localIP)
 
 	<-time.After(time.Millisecond * 500) //Let others detect this elevator was lost from network
 

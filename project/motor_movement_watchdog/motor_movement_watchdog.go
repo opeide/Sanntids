@@ -28,14 +28,13 @@ func Timer_stop() {
 	}
 }
 
-// Meant to run as thread
 func timer_thread() {
 	select {
 	case <-stop_channel:
 		timer_is_active = false
 		timer_has_stopped_chan <- 1
 	case <-time.After(time.Second * timeout_seconds):
-		fmt.Println("MOTOR MOVEMENT WATCHDOG TIMED OUT. Restarting...")
+		fmt.Println("Motor movement watchdog timed out. Restarting...")
 		os.Exit(0) //Lets backup take over (effectively a program restart)
 	}
 }

@@ -3,8 +3,6 @@ package request_holder
 import (
 	"../../hardware_interface"
 	"../../message_structs"
-	"fmt"
-	"sort"
 )
 
 var all_upward_requests = make(map[string][]message_structs.Request)
@@ -33,15 +31,15 @@ func Hold_request(request message_structs.Request) {
 
 	switch request.Request_type {
 	case hardware_interface.BUTTON_TYPE_CALL_UP:
-		if all_upward_requests[request.Responsible_elevator][request.Floor] == zero_request { //in holder
+		if all_upward_requests[request.Responsible_elevator][request.Floor] == zero_request {
 			all_upward_requests[request.Responsible_elevator][request.Floor] = request
 		}
 	case hardware_interface.BUTTON_TYPE_CALL_DOWN:
-		if all_downward_requests[request.Responsible_elevator][request.Floor] == zero_request { //
+		if all_downward_requests[request.Responsible_elevator][request.Floor] == zero_request {
 			all_downward_requests[request.Responsible_elevator][request.Floor] = request
 		}
 	case hardware_interface.BUTTON_TYPE_COMMAND:
-		if all_command_requests[request.Responsible_elevator][request.Floor] == zero_request { //
+		if all_command_requests[request.Responsible_elevator][request.Floor] == zero_request {
 			all_command_requests[request.Responsible_elevator][request.Floor] = request
 		}
 	}
@@ -118,50 +116,4 @@ func Get_requests_of_type(request_type int) map[string][]message_structs.Request
 		return all_command_requests
 	}
 	return make(map[string][]message_structs.Request)
-}
-
-func Print_requests(all_elevator_states map[string]message_structs.Elevator_state) {
-	var sorted_ids []string
-	for id := range all_command_requests {
-		sorted_ids = append(sorted_ids, id)
-	}
-	sort.Strings(sorted_ids)
-
-	fmt.Print("\n\n\n\n")
-	for _, responsible_id := range sorted_ids {
-		fmt.Print("\n")
-		fmt.Println("Responsible: ", responsible_id)
-		fmt.Println("--------------------------------------")
-		fmt.Println("\tFLOOR\tUP\tDOWN\tCOMMAND")
-		for floor := hardware_interface.N_FLOORS - 1; floor >= 0; floor-- {
-			fmt.Print("\t", floor, "\t")
-			if all_upward_requests[responsible_id][floor] != zero_request {
-				fmt.Print("*")
-			} else {
-				fmt.Print(" ")
-			}
-			fmt.Print("\t")
-			if all_downward_requests[responsible_id][floor] != zero_request {
-				fmt.Print("*")
-			} else {
-				fmt.Print(" ")
-			}
-			fmt.Print("\t")
-			if all_command_requests[responsible_id][floor] != zero_request {
-				fmt.Print("*")
-			} else {
-				fmt.Print(" ")
-			}
-			fmt.Print("\t")
-			if all_elevator_states[responsible_id].Last_visited_floor == floor {
-				fmt.Print("#")
-			} else {
-				fmt.Print(" ")
-			}
-			fmt.Print("\n")
-		}
-		fmt.Println("--------------------------------------")
-		fmt.Print("\n")
-	}
-	fmt.Print("\n\n\n\n")
 }

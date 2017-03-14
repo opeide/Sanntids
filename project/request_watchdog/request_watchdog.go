@@ -1,13 +1,8 @@
 package request_watchdog
 
-/*
-* Possibility of timer on each floor.
- */
-
 import (
 	"../hardware_interface"
 	"../message_structs"
-	"fmt"
 	"os"
 	"time"
 )
@@ -54,7 +49,6 @@ func timer_thread(request message_structs.Request) {
 	case <-stop_channels[request.Responsible_elevator][request.Floor]:
 		active_timers[request.Responsible_elevator][request.Floor] = false
 	case <-time.After(time.Second * timeout_seconds):
-		fmt.Println("Request timed out: ", request)
 		if request.Responsible_elevator == local_id {
 			os.Exit(0) //Lets backup take over (effectively a program restart)
 		}
