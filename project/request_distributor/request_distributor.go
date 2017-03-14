@@ -102,10 +102,6 @@ func Distribute_requests(
 
 		case button_request := <-button_request_chan:
 			button_request.Responsible_elevator = decide_responsible_elevator(button_request)
-
-			if button_request == zero_request { // TEMP TEST
-				fmt.Println("Local request, trying to register zero request. ")
-			}
 			distribute_request(button_request)
 			register_request(button_request)
 
@@ -120,9 +116,6 @@ func Distribute_requests(
 			if non_local_request.Is_completed {
 				register_finished_request(non_local_request)
 			} else {
-				if non_local_request == zero_request { // TEMP TEST
-					fmt.Println("Non_local_request, trying to register zero request. ")
-				}
 				if non_local_request.Responsible_elevator == local_id {
 					distribute_request(non_local_request)
 				}
@@ -133,15 +126,10 @@ func Distribute_requests(
 			if non_local_elevator_state.Elevator_id == local_id {
 				break
 			}
-			if non_local_elevator_state.Elevator_id == "" { // TEMP TEST
-				fmt.Println("Got non local elevator state with no id")
-			}
+
 			all_elevator_states[non_local_elevator_state.Elevator_id] = non_local_elevator_state
 
 		case timed_out_request := <-timed_out_requests_chan:
-			if timed_out_request == zero_request { // TEMP TEST
-				fmt.Println("Timed out request, trying to register zero request. ")
-			}
 			if timed_out_request.Responsible_elevator == local_id {
 				fmt.Println("Timed out on local request: ", timed_out_request)
 				distribute_request(timed_out_request)
@@ -158,9 +146,6 @@ func Distribute_requests(
 }
 
 func register_request(request message_structs.Request) {
-	if request.Responsible_elevator == "" {
-		fmt.Println("Trying to register blank id! ERROR")
-	}
 	request_watchdog.Timer_start(request)
 	request_holder.Hold_request(request)
 	set_request_lights(request, 1)
@@ -176,7 +161,6 @@ func register_finished_request(request message_structs.Request) {
 
 func distribute_request(request message_structs.Request) {
 	if request.Responsible_elevator == local_id && request.Is_completed == false {
-		fmt.Println("Sending request to executor. ")
 		requests_to_execute_chan <- request
 	}
 	request.Message_origin_id = local_id
@@ -288,6 +272,7 @@ func estimate_time_for_elevator_to_complete_request(elevator_state message_struc
 	}
 
 	fmt.Println("SIMULATOR NEVER REACHED FLOOR! SHOULD NOT HAPPEN!")
+	os.Exit(0) //Lets backup take over (effectively a program restart)
 	return total_time
 }
 
